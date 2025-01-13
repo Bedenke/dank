@@ -17,14 +17,20 @@ void dank::apple::onStart()
     engine.init();
 }
 
+void dank::apple::onHotReload()
+{
+    dank::console::log("Hot reloading [Apple]");
+    engine.init();
+}
+
 void dank::apple::onDraw(MetalView *view)
 {
     if (renderer.view == nullptr)
     {
+        dank::console::log("Initializing renderer");
         renderer.view = view;
         renderer.init();
     }
-
     engine.update();
     engine.render(&renderer);
 }

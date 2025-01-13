@@ -32,7 +32,7 @@ void dank::Engine::update()
         ctx.framesPerSecond = framePerSecondAccumulator.frames;
         framePerSecondAccumulator.time = 0;
         framePerSecondAccumulator.frames = 0;
-        dank::console::log("fps: %d %.2f", ctx.framesPerSecond, deltaTime);
+        dank::console::log("fps: %d | %.2fms", ctx.framesPerSecond, deltaTime);
     }
 
     // Update context

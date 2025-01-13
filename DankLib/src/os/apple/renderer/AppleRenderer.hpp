@@ -11,8 +11,12 @@ namespace dank
         {
         private:
             MTL::CommandQueue *commandQueue;
-            MTL::RenderPipelineState *pipelineState;
             MTL::RenderCommandEncoder *renderCommandEncoder;
+
+            MTL::RenderPipelineState *pipelineState = nullptr;
+            MTL::Buffer *_pVertexPositionsBuffer = nullptr;
+            MTL::Buffer *_pVertexColorsBuffer = nullptr;
+
         public:
             MetalView *view;
             void init() override;

@@ -12,21 +12,26 @@
 
 @implementation Renderer
 {
-    NSString* previousDylib;
+    NSString* currentDylib;
     void* _Nullable dankLibHandle;
+    NSString* currentMetalLib;
     NSDate *lastUpdateTime;
     float hotReloadTimer;
+    
+    id<MTLLibrary> shaderLibrary;
     dank::apple::MetalView metalView;
-
+    
     dank::apple::OnStartFunctionType onStart;
+    dank::apple::OnStartFunctionType onHotReload;
     dank::apple::OnDrawFunctionType onDraw;
     dank::apple::OnResizeFunctionType onResize;
 }
 
-
--(NSString*)findDynamicLibrary:(nonnull NSString *)sourcePath; {
+-(NSString*)findDynamicFile:(nonnull NSString *)sourcePath
+              withExtension:(nonnull NSString *)extension
+{
     NSError *error = nil;
-
+    
     NSFileManager* fm = [NSFileManager defaultManager];
     
     
@@ -38,26 +43,26 @@
     }
     
     __block NSDate *youngest = [[NSDate alloc] initWithTimeIntervalSince1970:0];
-    __block NSString* dylib = NULL;
+    __block NSString* resultFile = NULL;
     [dirs enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
         NSString *filename = (NSString *)obj;
-        NSString *extension = [[filename pathExtension] lowercaseString];
-        if ([extension isEqualToString:@"dylib"]) {
+        NSString *ext = [[filename pathExtension] lowercaseString];
+        if ([ext isEqualToString:extension]) {
             NSString* file = [sourcePath stringByAppendingPathComponent:filename];
             NSDate *lastModified = [[fm attributesOfItemAtPath:file error:NULL] fileModificationDate];
             if ([lastModified isGreaterThan:youngest]) {
                 youngest = lastModified;
-                dylib = file;
+                resultFile = file;
             }
         }
     }];
     
-    if (!dylib) {
-        NSLog(@"no dylib found: %@\n", sourcePath);
+    if (!resultFile) {
+        NSLog(@"No file with extension %@ found: %@\n", extension, sourcePath);
         return nil;
     }
     
-    return dylib;
+    return resultFile;
 }
 
 -(bool)loadDynamicLibrary:(nonnull NSString *)dylib; {
@@ -66,11 +71,12 @@
             printf("unload error: %s\n", dlerror());
         }
     }
-
+    
     dankLibHandle = dlopen([dylib cStringUsingEncoding:kUnicodeUTF8Format], RTLD_LOCAL | RTLD_NOW);
     
     if(dankLibHandle) {
         onStart = (dank::apple::OnStartFunctionType)dlsym(dankLibHandle, "onStart");
+        onHotReload = (dank::apple::OnHotReloadFunctionType)dlsym(dankLibHandle, "onHotReload");
         onDraw = (dank::apple::OnDrawFunctionType)dlsym(dankLibHandle, "onDraw");
         onResize = (dank::apple::OnResizeFunctionType)dlsym(dankLibHandle, "onResize");
         
@@ -83,18 +89,80 @@
 }
 
 
--(bool)hotReload {
+-(bool) loadShaderLibrary:(id<MTLDevice>)device
+               sourceFile: (nonnull NSString*) sourceFile
+{
+    
+    NSURL *libraryURL = [NSURL URLWithString:sourceFile];
+//    NSURL *libraryURL = [[NSBundle mainBundle] URLForResource:libraryName
+//                                                withExtension:@"metallib"];
+
+
+    if (libraryURL == nil) {
+        NSLog(@"Couldn't find library file: %@", libraryURL);
+        return false;
+    }
+
+
+    NSError *libraryError = nil;
+    shaderLibrary = [device newLibraryWithURL:libraryURL
+                                                  error:&libraryError];
+    if (shaderLibrary == nil) {
+        NSLog(@"Couldn't create library: %@", libraryURL);
+        if (libraryError.localizedDescription != nil) {
+            NSLog(@"Error description: %@", libraryError.localizedDescription);
+        }
+        return false;
+    }
+
+    NSLog(@"Shader library file: %@", libraryURL);
+
+    return true;
+}
+
+
+-(bool)updateDylibSource {
 
     NSString *sourcePath = @"./DankLib/zig-out/lib";
 
-    NSString* dylib = [self findDynamicLibrary:sourcePath];
+    NSString* dylib = [self findDynamicFile:sourcePath withExtension:@"dylib"];
     if (dylib == nil) return false;
     
-    if ([dylib isEqualTo:previousDylib]) return false;
+    if ([dylib isEqualTo:currentDylib]) return false;
     
-    previousDylib = [NSString stringWithString:dylib];
+    currentDylib = [NSString stringWithString:dylib];
 
-    return [self loadDynamicLibrary: dylib];
+    return true;
+}
+
+-(bool)updateMetalLibSource {
+
+    NSString *sourcePath = @"./DankLib/zig-out/lib";
+
+    NSString* metalLib = [self findDynamicFile:sourcePath withExtension:@"metallib"];
+    if (metalLib == nil) return false;
+    
+    if ([metalLib isEqualTo:currentMetalLib]) return false;
+    
+    currentMetalLib = [NSString stringWithString:metalLib];
+    
+    return true;
+}
+
+-(bool)hotReload:(nonnull MTKView *)view {
+    bool dylib = [self updateDylibSource];
+    if (dylib) {
+        if (![self loadDynamicLibrary:currentDylib]) return false;
+
+        view.device = MTLCreateSystemDefaultDevice();
+
+        [self updateMetalLibSource];
+        if (![self loadShaderLibrary:view.device sourceFile:currentMetalLib]) return false;
+        
+        return true;
+    }
+    
+    return false;
 }
 
 -(nonnull instancetype)initWithMetalKitView:(nonnull MTKView *)view;
@@ -102,15 +170,17 @@
     self = [super init];
     lastUpdateTime = [NSDate date];
     
-    if ([self hotReload]) {
+    if ([self hotReload:view]) {
+        [view setColorPixelFormat:MTLPixelFormatBGRA8Unorm_sRGB];
         
-        metalView.device =(__bridge MTL::Device *) view.device;
-        metalView.currentDrawable = (__bridge MTL::Drawable *) view.currentDrawable;
-        metalView.currentRenderPassDescriptor = (__bridge MTL::RenderPassDescriptor *) view.currentRenderPassDescriptor;
+        [self mtkView:view drawableSizeWillChange:view.drawableSize];
+
         onStart();
+        
+        return self;
     }
     
-    return self;
+    return nil;
 }
 
 - (void)drawInMTKView:(nonnull MTKView *)view
@@ -119,15 +189,20 @@
     NSTimeInterval deltaTime = [currentTime timeIntervalSinceDate:lastUpdateTime];
     lastUpdateTime = currentTime;
     hotReloadTimer -= deltaTime;
-    
+
+    bool reloaded = false;
     if (hotReloadTimer < 0) {
         hotReloadTimer = 1;
-        [self hotReload];
+        reloaded = [self hotReload:view];
     }
-    
+
     metalView.device =(__bridge MTL::Device *) view.device;
+    metalView.shaderLibrary = (__bridge MTL::Library *) shaderLibrary;
     metalView.currentDrawable = (__bridge MTL::Drawable *) view.currentDrawable;
     metalView.currentRenderPassDescriptor = (__bridge MTL::RenderPassDescriptor *) view.currentRenderPassDescriptor;
+
+    if (reloaded) onHotReload();
+
     onDraw(&metalView);
 }
 
