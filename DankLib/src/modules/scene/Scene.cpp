@@ -1,13 +1,12 @@
 #include "Scene.hpp"
-#include "../renderer/Renderer.hpp"
+#include "modules/renderer/Renderer.hpp"
+#include "modules/renderer/meshes/Mesh.hpp"
 
-void dank::Scene::update(const float dt) const
-{
-    // Update scene
-}
+using namespace dank;
 
-void dank::Scene::draw(Renderer *renderer) const
-{
-    // Draw scene
-    renderer->clear();
+void Scene::update(FrameContext &ctx) {
+  ctx.draw.clear();
+
+  auto t1 = ctx.draw.create();
+  ctx.draw.emplace<draw::Mesh>(t1, draw::Mesh{mesh::Mesh::TRIANGLE});
 }

@@ -1,19 +1,26 @@
 #include <metal_stdlib>
 using namespace metal;
 
+struct VertexData {
+  packed_float3 position;
+  packed_float3 normal;
+  packed_float2 uv;
+};
+
 struct v2f
 {
     float4 position [[position]];
     half3 color;
 };
 
-v2f vertex vertexMain( uint vertexId [[vertex_id]],
-                        device const float3* positions [[buffer(0)]],
-                        device const float3* colors [[buffer(1)]] )
+v2f vertex vertexMain( device const VertexData* vertexData [[buffer(0)]],
+                               uint vertexId [[vertex_id]])
 {
+    const device VertexData& vd = vertexData[ vertexId ];
+
     v2f o;
-    o.position = float4( positions[ vertexId ], 1.0 );
-    o.color = half3 ( colors[ vertexId ] );
+    o.position = float4( vd.position, 1.0 );
+    o.color = half3 ( vd.normal );
     return o;
 }
 

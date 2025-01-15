@@ -1,4 +1,5 @@
 #pragma once
+#include "modules/FrameContext.hpp"
 
 namespace dank
 {
@@ -6,6 +7,16 @@ namespace dank
     {
     public:
         virtual void init() = 0;
-        virtual void clear() = 0;
+        virtual void render(const FrameContext &ctx) = 0;
+        virtual void release() = 0;
     };
-} // namespace dank
+
+    namespace draw
+    {
+        struct Mesh
+        {
+            uint32_t meshId;
+        };
+    }
+
+}

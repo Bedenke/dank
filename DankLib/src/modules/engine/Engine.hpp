@@ -1,20 +1,13 @@
 #pragma once
 
 #include "modules/Foundation.hpp"
+#include "modules/FrameContext.hpp"
 #include "modules/scene/Scene.hpp"
 #include "modules/renderer/Renderer.hpp"
 
 namespace dank
 {
-    struct Context
-    {
-        bool paused{false};
-        float deltaTime = 0;
-        uint32_t framesPerSecond = 0;
-        float absoluteTime = 0;
-        uint32_t absoluteFrame = 0;
-    };
-
+ 
     class Engine
     {
     private:
@@ -28,11 +21,10 @@ namespace dank
         double getTimeInMilliseconds() const;
 
     public:
-        Context ctx;
+        FrameContext ctx;
         Scene *scene = nullptr;
         void init();
-        void update();
-        void render(Renderer *renderer);
+        void update(Renderer *renderer);
     };
 
 } // namespace dank

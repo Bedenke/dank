@@ -1,9 +1,11 @@
 const std = @import("std");
+const zcc = @import("compile_commands");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) void {
+    var targets = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -20,6 +22,8 @@ pub fn build(b: *std.Build) void {
     var buf: [100]u8 = undefined;
     const name = std.fmt.bufPrint(&buf, fmt, .{ "dank", time_in_sec }) catch "engine";
 
+    const cflags = [_][]const u8{ "-std=c++17", "-fno-sanitize=undefined" };
+
     const lib = b.addSharedLibrary(.{
         .name = name,
         .target = target,
@@ -32,6 +36,7 @@ pub fn build(b: *std.Build) void {
     lib.linkLibCpp();
     lib.linkFramework("Foundation");
     lib.linkFramework("Metal");
+    //lib.linkSystemLibrary("objc", .{});
     lib.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
@@ -41,6 +46,7 @@ pub fn build(b: *std.Build) void {
             "os/apple/AppleOS.cpp",
             "os/apple/renderer/AppleRenderer.cpp",
         },
+        .flags = &cflags,
     });
 
     const HelperFunctions = struct {
@@ -67,6 +73,8 @@ pub fn build(b: *std.Build) void {
         "-sdk",
         "macosx",
         "metal",
+        "-frecord-sources",
+        "-gline-tables-only",
         "-o",
         compiled_shader,
         "-c",
@@ -102,10 +110,17 @@ pub fn build(b: *std.Build) void {
 
     compile_shader.step.dependOn(&clean_lib_step);
     pack_shaders.step.dependOn(&compile_shader.step);
+
+    targets.append(lib) catch |err| {
+        std.debug.print("Failed {s}", .{@errorName(err)});
+    };
+
     b.getInstallStep().dependOn(&pack_shaders.step);
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
     b.installArtifact(lib);
+
+    zcc.createStep(b, "cdb", targets.toOwnedSlice() catch @panic("OOM"));
 }

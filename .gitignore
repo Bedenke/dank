@@ -1,1 +1,3 @@
 .DS_Store
+DankLib/.cache
+DankLib/compile_commands.json

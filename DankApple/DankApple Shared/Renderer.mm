@@ -19,10 +19,10 @@
     float hotReloadTimer;
     
     id<MTLLibrary> shaderLibrary;
-    dank::apple::MetalView metalView;
     
     dank::apple::OnStartFunctionType onStart;
-    dank::apple::OnStartFunctionType onHotReload;
+    dank::apple::OnStopFunctionType onStop;
+    dank::apple::OnHotReloadFunctionType onHotReload;
     dank::apple::OnDrawFunctionType onDraw;
     dank::apple::OnResizeFunctionType onResize;
 }
@@ -66,16 +66,12 @@
 }
 
 -(bool)loadDynamicLibrary:(nonnull NSString *)dylib; {
-    if (dankLibHandle) {
-        if (dlclose(dankLibHandle) != 0) {
-            printf("unload error: %s\n", dlerror());
-        }
-    }
-    
+    // dlclose causes a crash when closing the app
     dankLibHandle = dlopen([dylib cStringUsingEncoding:kUnicodeUTF8Format], RTLD_LOCAL | RTLD_NOW);
     
     if(dankLibHandle) {
         onStart = (dank::apple::OnStartFunctionType)dlsym(dankLibHandle, "onStart");
+        onStop = (dank::apple::OnStartFunctionType)dlsym(dankLibHandle, "onStop");
         onHotReload = (dank::apple::OnHotReloadFunctionType)dlsym(dankLibHandle, "onHotReload");
         onDraw = (dank::apple::OnDrawFunctionType)dlsym(dankLibHandle, "onDraw");
         onResize = (dank::apple::OnResizeFunctionType)dlsym(dankLibHandle, "onResize");
@@ -102,8 +98,8 @@
         NSLog(@"Couldn't find library file: %@", libraryURL);
         return false;
     }
-
-
+    
+   
     NSError *libraryError = nil;
     shaderLibrary = [device newLibraryWithURL:libraryURL
                                                   error:&libraryError];
@@ -152,9 +148,9 @@
 -(bool)hotReload:(nonnull MTKView *)view {
     bool dylib = [self updateDylibSource];
     if (dylib) {
+        if (onStop != nullptr) onStop();
+        
         if (![self loadDynamicLibrary:currentDylib]) return false;
-
-        view.device = MTLCreateSystemDefaultDevice();
 
         [self updateMetalLibSource];
         if (![self loadShaderLibrary:view.device sourceFile:currentMetalLib]) return false;
@@ -169,6 +165,8 @@
 {
     self = [super init];
     lastUpdateTime = [NSDate date];
+    
+    view.device = MTLCreateSystemDefaultDevice();
     
     if ([self hotReload:view]) {
         [view setColorPixelFormat:MTLPixelFormatBGRA8Unorm_sRGB];
@@ -196,13 +194,13 @@
         reloaded = [self hotReload:view];
     }
 
+    if (reloaded) onHotReload();
+        
+    dank::apple::MetalView metalView;
     metalView.device =(__bridge MTL::Device *) view.device;
     metalView.shaderLibrary = (__bridge MTL::Library *) shaderLibrary;
     metalView.currentDrawable = (__bridge MTL::Drawable *) view.currentDrawable;
     metalView.currentRenderPassDescriptor = (__bridge MTL::RenderPassDescriptor *) view.currentRenderPassDescriptor;
-
-    if (reloaded) onHotReload();
-
     onDraw(&metalView);
 }
 

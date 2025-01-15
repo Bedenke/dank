@@ -13,13 +13,20 @@ dank::apple::AppleRenderer renderer;
 
 void dank::apple::onStart()
 {
-    dank::console::log("Starting platform [Apple]");
+    dank::console::log("[AppleOS] starting");
     engine.init();
+}
+
+
+void dank::apple::onStop()
+{
+    renderer.release();
+    dank::console::log("[AppleOS] stopped");
 }
 
 void dank::apple::onHotReload()
 {
-    dank::console::log("Hot reloading [Apple]");
+    dank::console::log("[AppleOS] hot reload");
     engine.init();
 }
 
@@ -27,15 +34,15 @@ void dank::apple::onDraw(MetalView *view)
 {
     if (renderer.view == nullptr)
     {
-        dank::console::log("Initializing renderer");
+        dank::console::log("[AppleOS] init renderer");
         renderer.view = view;
         renderer.init();
     }
-    engine.update();
-    engine.render(&renderer);
+
+    engine.update(&renderer);
 }
 
 void dank::apple::onResize(int width, int height)
 {
-    dank::console::log("Resized");
+    dank::console::log("[AppleOS] resized");
 }

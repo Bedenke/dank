@@ -23,6 +23,10 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
+        .compile_commands = .{
+            .url = "https://github.com/the-argus/zig-compile-commands/archive/b73e8bdeb1266ea01b249387cabb39aad49f35d1.tar.gz",
+            .hash = "1220b92b277b33762a10b4f239edddfbe9aadd53af88c678f94443b0d2312d9526fa",
+        },
         // See `zig fetch --save <url>` for a command-line interface for adding dependencies.
         //.example = .{
         //    // When updating this field to a new URL, be sure to delete the corresponding

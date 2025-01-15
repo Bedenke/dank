@@ -1,13 +1,14 @@
 #pragma once
 
-#include "modules/renderer/Renderer.hpp"
+#include "modules/Foundation.hpp"
+#include "modules/FrameContext.hpp"
 
 namespace dank
 {
     class Scene
     {
     public:
-        void update(const float dt) const;
-        void draw(Renderer *renderer) const;
+        entt::registry entities{};
+        void update(FrameContext &ctx);
     };
 } // namespace dank

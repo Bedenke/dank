@@ -1,0 +1,30 @@
+{
+	"folders": [
+		{
+			"path": ".",
+		},
+	],
+	"settings": {
+		"files.associations": {
+			"typeinfo": "cpp",
+			"ios": "cpp",
+			"__hash_table": "cpp",
+			"__split_buffer": "cpp",
+			"__tree": "cpp",
+			"deque": "cpp",
+			"list": "cpp",
+			"map": "cpp",
+			"set": "cpp",
+			"string": "cpp",
+			"unordered_map": "cpp",
+			"unordered_set": "cpp",
+			"vector": "cpp",
+			"memory": "cpp",
+			"forward_list": "cpp"
+		},
+		"files.exclude": {
+			"DankApple": true,
+			"DankLib/.zig-cache": true
+		}
+	}
+}

@@ -1,81 +1,119 @@
 #include "AppleRenderer.hpp"
 #include "modules/engine/Console.hpp"
+#include "modules/renderer/Renderer.hpp"
+#include "modules/renderer/meshes/Mesh.hpp"
+#include "os/apple/Metal.hpp"
+#include <cstdint>
 #include <simd/simd.h>
+#include <sys/types.h>
 
-void dank::apple::AppleRenderer::init()
-{
-    this->commandQueue = this->view->device->newCommandQueue();
+using namespace dank;
 
-    {
-        MTL::Function *pVertexFn = this->view->shaderLibrary->newFunction(NS::String::string("vertexMain", NS::StringEncoding::UTF8StringEncoding));
-        MTL::Function *pFragFn = this->view->shaderLibrary->newFunction(NS::String::string("fragmentMain", NS::StringEncoding::UTF8StringEncoding));
+void apple::AppleRenderer::init() {
+  this->commandQueue = this->view->device->newCommandQueue();
 
-        MTL::RenderPipelineDescriptor *pDesc = MTL::RenderPipelineDescriptor::alloc()->init();
-        pDesc->setVertexFunction(pVertexFn);
-        pDesc->setFragmentFunction(pFragFn);
-        pDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
+  {
+    MTL::Function *pVertexFn =
+        this->view->shaderLibrary->newFunction(NS::String::string(
+            "vertexMain", NS::StringEncoding::UTF8StringEncoding));
+    MTL::Function *pFragFn =
+        this->view->shaderLibrary->newFunction(NS::String::string(
+            "fragmentMain", NS::StringEncoding::UTF8StringEncoding));
 
-        NS::Error *pError;
-        pipelineState = view->device->newRenderPipelineState(pDesc, &pError);
-        if (!pipelineState)
-        {
-            dank::console::log("%s", pError->localizedDescription()->utf8String());
-            assert(false);
-        }
+    MTL::RenderPipelineDescriptor *pDesc =
+        MTL::RenderPipelineDescriptor::alloc()->init();
+    pDesc->setVertexFunction(pVertexFn);
+    pDesc->setFragmentFunction(pFragFn);
+    pDesc->colorAttachments()->object(0)->setPixelFormat(
+        MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
 
-        pVertexFn->release();
-        pFragFn->release();
-        pDesc->release();
+    NS::Error *pError;
+    pipelineState = view->device->newRenderPipelineState(pDesc, &pError);
+    if (!pipelineState) {
+      console::log("%s", pError->localizedDescription()->utf8String());
+      assert(false);
     }
 
-    {
-        const size_t NumVertices = 3;
-
-        simd::float3 positions[NumVertices] =
-            {
-                {-0.8f, 0.8f, 0.0f},
-                {0.0f, -0.8f, 0.0f},
-                {+0.8f, 0.8f, 0.0f}};
-
-        simd::float3 colors[NumVertices] =
-            {
-                {1.0f, 0.0f, 0.0f},
-                {0.0f, 1.0, 0.0f},
-                {0.0f, 0.0f, 1.0}};
-
-        const size_t positionsDataSize = NumVertices * sizeof(simd::float3);
-        const size_t colorDataSize = NumVertices * sizeof(simd::float3);
-
-        MTL::Buffer *pVertexPositionsBuffer = view->device->newBuffer(positionsDataSize, MTL::ResourceStorageModeShared);
-        MTL::Buffer *pVertexColorsBuffer = view->device->newBuffer(colorDataSize, MTL::ResourceStorageModeShared);
-
-        _pVertexPositionsBuffer = pVertexPositionsBuffer;
-        _pVertexColorsBuffer = pVertexColorsBuffer;
-
-        memcpy(_pVertexPositionsBuffer->contents(), positions, positionsDataSize);
-        memcpy(_pVertexColorsBuffer->contents(), colors, colorDataSize);
-    }
+    pVertexFn->release();
+    pFragFn->release();
+    pDesc->release();
+  }
 }
 
-void dank::apple::AppleRenderer::clear()
-{
-    // Clear the screen
+void apple::AppleRenderer::prepareMeshes(const dank::FrameContext &ctx) {
+  if (meshesLastModified == ctx.meshLibrary.lastModified)
+    return;
+  meshesLastModified = ctx.meshLibrary.lastModified;
 
-    NS::AutoreleasePool *pPool = NS::AutoreleasePool::alloc()->init();
+  if (meshVertexBuffer != nullptr) {
+    meshVertexBuffer->release();
+  }
+  if (meshIndexBuffer != nullptr) {
+    meshIndexBuffer->release();
+  }
 
-    MTL::RenderPassDescriptor *pRpd = this->view->currentRenderPassDescriptor;
+  meshVertexBuffer = view->device->newBuffer(ctx.meshLibrary.vertexDataSize,
+                                             MTL::ResourceStorageModeShared);
 
-    MTL::CommandBuffer *pCmd = this->commandQueue->commandBuffer();
-    MTL::RenderCommandEncoder *pEnc = pCmd->renderCommandEncoder(pRpd);
+  meshIndexBuffer = view->device->newBuffer(ctx.meshLibrary.indexDataSize,
+                                            MTL::ResourceStorageModeShared);
 
-    pEnc->setRenderPipelineState(this->pipelineState);
-    pEnc->setVertexBuffer(_pVertexPositionsBuffer, 0, 0);
-    pEnc->setVertexBuffer(_pVertexColorsBuffer, 0, 1);
-    pEnc->drawPrimitives(MTL::PrimitiveType::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+  memcpy(meshVertexBuffer->contents(), ctx.meshLibrary.vbo.data(),
+         ctx.meshLibrary.vertexDataSize);
+  memcpy(meshIndexBuffer->contents(), ctx.meshLibrary.ibo.data(),
+         ctx.meshLibrary.indexDataSize);
 
-    pEnc->endEncoding();
-    pCmd->presentDrawable(this->view->currentDrawable);
-    pCmd->commit();
+  dank::console::log("[AppleRenderer] vertex buffer updated");
+}
 
-    pPool->release();
+void apple::AppleRenderer::render(const dank::FrameContext &ctx) {
+
+  prepareMeshes(ctx);
+  
+  MTL::RenderPassDescriptor *pRpd = this->view->currentRenderPassDescriptor;
+  if (pRpd == nullptr) return;
+  
+  NS::AutoreleasePool *pPool = NS::AutoreleasePool::alloc()->init();
+
+
+  MTL::CommandBuffer *pCmd = this->commandQueue->commandBuffer();
+  MTL::RenderCommandEncoder *pEnc = pCmd->renderCommandEncoder(pRpd);
+
+  pEnc->setRenderPipelineState(this->pipelineState);
+  pEnc->setVertexBuffer(meshVertexBuffer, 0, 0);
+
+  auto view = ctx.draw.view<draw::Mesh>();
+  for (auto [entity, mesh] : view.each()) {
+    const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
+    pEnc->drawIndexedPrimitives(
+        MTL::PrimitiveType::PrimitiveTypeTriangle, meshDescriptor->indexCount,
+        MTL::IndexTypeUInt32, meshIndexBuffer, meshDescriptor->indexOffset);
+  }
+
+  pEnc->endEncoding();
+  pCmd->presentDrawable(this->view->currentDrawable);
+  pCmd->commit();
+
+  pPool->release();
+}
+
+void apple::AppleRenderer::release() {
+    if (meshVertexBuffer != nullptr) {
+    meshVertexBuffer->release();
+    meshVertexBuffer = nullptr;
+  }
+  if (meshIndexBuffer != nullptr) {
+    meshIndexBuffer->release();
+    meshIndexBuffer = nullptr;
+  }
+
+  if (pipelineState != nullptr) {
+    pipelineState->release();
+    pipelineState = nullptr;
+  }
+  
+  if (commandQueue != nullptr) {
+    commandQueue->release();
+    commandQueue = nullptr;
+  }
 }

@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 #include "Console.hpp"
+#include "modules/renderer/meshes/TriangleMesh.hpp"
 #include <chrono>
 
 double dank::Engine::getTimeInMilliseconds() const
@@ -11,12 +12,15 @@ double dank::Engine::getTimeInMilliseconds() const
 
 void dank::Engine::init()
 {
-    dank::console::log("Engine initialized");
+    mesh::Triangle triangleMesh{};
+    ctx.meshLibrary.add(triangleMesh);
+    
     scene = new dank::Scene();
     framePerSecondAccumulator.lastTime = getTimeInMilliseconds();
+    dank::console::log("Engine initialized");
 }
 
-void dank::Engine::update()
+void dank::Engine::update(Renderer *renderer)
 {
 
     // Calculate delta time
@@ -43,14 +47,8 @@ void dank::Engine::update()
     // Update scene
     if (scene != nullptr)
     {
-        scene->update(deltaTime);
+        scene->update(ctx);
     }
-}
 
-void dank::Engine::render(Renderer *renderer)
-{
-    if (scene != nullptr)
-    {
-        scene->draw(renderer);
-    }
+    renderer->render(ctx);
 }
