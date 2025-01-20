@@ -30,6 +30,7 @@ struct MeshDescriptor {
 class Mesh {
 public:
   static const uint32_t TRIANGLE = 1;
+  static const uint32_t RECTANGLE = 2;
 
   virtual uint32_t id() = 0;
   virtual void getData(MeshData &output) = 0;
@@ -55,15 +56,23 @@ public:
     mesh.getData(data);
 
     MeshDescriptor descriptor{};
-    descriptor.id = descriptors.size();
+    descriptor.id = mesh.id();
     descriptor.vertexOffset = vbo.size();
     descriptor.vertexCount = data.vertices.size();
     descriptor.indexOffset = ibo.size();
     descriptor.indexCount = data.indices.size();
-    descriptors[mesh.id()] = descriptor;
 
+    descriptors[descriptor.id] = descriptor;
+
+    // offset the indices based on the previous number of vertices
+    // for example:
+    // add triangle mesh (3 vertices), indices 0, 1, 2
+    // add rectangle mesh, indices offset by 3 (vertices) 3,4,5,5,6,3
+    size_t vertexOffset = vbo.size();
+    for (const auto index : data.indices) {
+      ibo.push_back(vertexOffset + index);
+    }
     vbo.insert(vbo.end(), data.vertices.begin(), data.vertices.end());
-    ibo.insert(ibo.end(), data.indices.begin(), data.indices.end());
 
     vertexDataSize = vbo.size() * sizeof(VertexData);
     indexDataSize = ibo.size() * sizeof(uint32_t);

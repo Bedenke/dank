@@ -69,12 +69,12 @@ void apple::AppleRenderer::prepareMeshes(const dank::FrameContext &ctx) {
 void apple::AppleRenderer::render(const dank::FrameContext &ctx) {
 
   prepareMeshes(ctx);
-  
-  MTL::RenderPassDescriptor *pRpd = this->view->currentRenderPassDescriptor;
-  if (pRpd == nullptr) return;
-  
-  NS::AutoreleasePool *pPool = NS::AutoreleasePool::alloc()->init();
 
+  MTL::RenderPassDescriptor *pRpd = this->view->currentRenderPassDescriptor;
+  if (pRpd == nullptr)
+    return;
+
+  NS::AutoreleasePool *pPool = NS::AutoreleasePool::alloc()->init();
 
   MTL::CommandBuffer *pCmd = this->commandQueue->commandBuffer();
   MTL::RenderCommandEncoder *pEnc = pCmd->renderCommandEncoder(pRpd);
@@ -85,9 +85,10 @@ void apple::AppleRenderer::render(const dank::FrameContext &ctx) {
   auto view = ctx.draw.view<draw::Mesh>();
   for (auto [entity, mesh] : view.each()) {
     const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
-    pEnc->drawIndexedPrimitives(
-        MTL::PrimitiveType::PrimitiveTypeTriangle, meshDescriptor->indexCount,
-        MTL::IndexTypeUInt32, meshIndexBuffer, meshDescriptor->indexOffset);
+    pEnc->drawIndexedPrimitives(MTL::PrimitiveType::PrimitiveTypeTriangle,
+                                NS::UInteger(meshDescriptor->indexCount),
+                                MTL::IndexTypeUInt32, meshIndexBuffer,
+                                NS::UInteger(meshDescriptor->indexOffset * sizeof(uint32_t)));
   }
 
   pEnc->endEncoding();
@@ -98,7 +99,7 @@ void apple::AppleRenderer::render(const dank::FrameContext &ctx) {
 }
 
 void apple::AppleRenderer::release() {
-    if (meshVertexBuffer != nullptr) {
+  if (meshVertexBuffer != nullptr) {
     meshVertexBuffer->release();
     meshVertexBuffer = nullptr;
   }
@@ -111,7 +112,7 @@ void apple::AppleRenderer::release() {
     pipelineState->release();
     pipelineState = nullptr;
   }
-  
+
   if (commandQueue != nullptr) {
     commandQueue->release();
     commandQueue = nullptr;

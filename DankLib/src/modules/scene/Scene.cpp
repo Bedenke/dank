@@ -8,5 +8,6 @@ void Scene::update(FrameContext &ctx) {
   ctx.draw.clear();
 
   auto t1 = ctx.draw.create();
-  ctx.draw.emplace<draw::Mesh>(t1, draw::Mesh{mesh::Mesh::TRIANGLE});
+  // ctx.draw.emplace<draw::Mesh>(t1, draw::Mesh{mesh::Mesh::TRIANGLE});
+  ctx.draw.emplace<draw::Mesh>(t1, draw::Mesh{mesh::Mesh::RECTANGLE});
 }
