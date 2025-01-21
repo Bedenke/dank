@@ -14,12 +14,15 @@ private:
   MTL::Buffer *meshVertexBuffer = nullptr;
   MTL::Buffer *meshIndexBuffer = nullptr;
   uint32_t meshesLastModified = 0;
-  void prepareMeshes(const dank::FrameContext &ctx);
+  uint32_t texturesLastModified = 0;
+  std::map<uint32_t, MTL::Texture*> textures{};
+  void prepareMeshes(dank::FrameContext &ctx);
+  void prepareTextures(dank::FrameContext &ctx);
 
 public:
   MetalView *view;
   void init() override;
-  void render(const dank::FrameContext &ctx) override;
+  void render(dank::FrameContext &ctx) override;
   void release() override;
 };
 } // namespace apple

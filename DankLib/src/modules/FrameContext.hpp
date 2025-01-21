@@ -2,6 +2,7 @@
 
 #include "modules/Foundation.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
+#include "modules/renderer/textures/Texture.hpp"
 
 namespace dank
 {
@@ -14,5 +15,6 @@ namespace dank
         uint32_t absoluteFrame = 0;
         entt::registry draw{};
         mesh::MeshLibrary meshLibrary;
+        texture::TextureLibrary textureLibrary;
     };
 }

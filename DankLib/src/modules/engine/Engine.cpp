@@ -2,6 +2,7 @@
 #include "Console.hpp"
 #include "modules/renderer/meshes/RectangleMesh.hpp"
 #include "modules/renderer/meshes/TriangleMesh.hpp"
+#include "modules/renderer/textures/DebugTexture.hpp"
 #include <chrono>
 
 double dank::Engine::getTimeInMilliseconds() const
@@ -13,10 +14,9 @@ double dank::Engine::getTimeInMilliseconds() const
 
 void dank::Engine::init()
 {
-    mesh::Triangle triangleMesh{};
-    mesh::Rectangle rectangleMesh{};
-    ctx.meshLibrary.add(triangleMesh);
-    ctx.meshLibrary.add(rectangleMesh);
+    ctx.meshLibrary.add(mesh::Triangle::ID, new mesh::Triangle());
+    ctx.meshLibrary.add(mesh::Rectangle::ID, new mesh::Rectangle());
+    ctx.textureLibrary.add(texture::DebugTexture::ID, new texture::DebugTexture());
     
     scene = new dank::Scene();
     framePerSecondAccumulator.lastTime = getTimeInMilliseconds();

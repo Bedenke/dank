@@ -7,7 +7,7 @@ namespace dank
     {
     public:
         virtual void init() = 0;
-        virtual void render(const FrameContext &ctx) = 0;
+        virtual void render(FrameContext &ctx) = 0;
         virtual void release() = 0;
     };
 

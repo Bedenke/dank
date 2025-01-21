@@ -2,6 +2,7 @@
 #include "modules/engine/Console.hpp"
 #include "modules/renderer/Renderer.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
+#include "modules/renderer/textures/Texture.hpp"
 #include "os/apple/Metal.hpp"
 #include <cstdint>
 #include <simd/simd.h>
@@ -40,7 +41,7 @@ void apple::AppleRenderer::init() {
   }
 }
 
-void apple::AppleRenderer::prepareMeshes(const dank::FrameContext &ctx) {
+void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
   if (meshesLastModified == ctx.meshLibrary.lastModified)
     return;
   meshesLastModified = ctx.meshLibrary.lastModified;
@@ -52,23 +53,62 @@ void apple::AppleRenderer::prepareMeshes(const dank::FrameContext &ctx) {
     meshIndexBuffer->release();
   }
 
-  meshVertexBuffer = view->device->newBuffer(ctx.meshLibrary.vertexDataSize,
+  mesh::MeshLibraryData mld{};
+  ctx.meshLibrary.getData(mld);
+
+  meshVertexBuffer = view->device->newBuffer(mld.vertexDataSize,
                                              MTL::ResourceStorageModeShared);
 
-  meshIndexBuffer = view->device->newBuffer(ctx.meshLibrary.indexDataSize,
+  meshIndexBuffer = view->device->newBuffer(mld.indexDataSize,
                                             MTL::ResourceStorageModeShared);
 
-  memcpy(meshVertexBuffer->contents(), ctx.meshLibrary.vbo.data(),
-         ctx.meshLibrary.vertexDataSize);
-  memcpy(meshIndexBuffer->contents(), ctx.meshLibrary.ibo.data(),
-         ctx.meshLibrary.indexDataSize);
+  memcpy(meshVertexBuffer->contents(), mld.vbo.data(), mld.vertexDataSize);
+  memcpy(meshIndexBuffer->contents(), mld.ibo.data(), mld.indexDataSize);
 
   dank::console::log("[AppleRenderer] vertex buffer updated");
 }
 
-void apple::AppleRenderer::render(const dank::FrameContext &ctx) {
+void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
+  if (texturesLastModified == ctx.textureLibrary.lastModified)
+    return;
+
+  texturesLastModified = ctx.textureLibrary.lastModified;
+
+  textures.clear();
+
+  for (const auto &entry : ctx.textureLibrary.descriptors) {
+
+    const texture::TextureDescriptor &desc = entry.second;
+
+    texture::TextureData td{};
+    desc.texture->getData(td);
+
+    MTL::TextureDescriptor *pTextureDesc =
+        MTL::TextureDescriptor::alloc()->init();
+    pTextureDesc->setWidth(td.width);
+    pTextureDesc->setHeight(td.height);
+    if (desc.texture->getType() == texture::TextureType::Color) {
+      pTextureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+      pTextureDesc->setTextureType(MTL::TextureType2D);
+    }
+    pTextureDesc->setStorageMode(MTL::StorageModeShared);
+    pTextureDesc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
+
+    MTL::Texture *pTexture = view->device->newTexture(pTextureDesc);
+    pTexture->replaceRegion(MTL::Region(0, 0, 0, td.width, td.height, 1), 0,
+                            td.data.data(), td.width * td.channels);
+    pTextureDesc->release();
+
+    textures[desc.index] = pTexture;
+  }
+
+  dank::console::log("[AppleRenderer] textures updated: %d", textures.size());
+}
+
+void apple::AppleRenderer::render(dank::FrameContext &ctx) {
 
   prepareMeshes(ctx);
+  prepareTextures(ctx);
 
   MTL::RenderPassDescriptor *pRpd = this->view->currentRenderPassDescriptor;
   if (pRpd == nullptr)
@@ -82,13 +122,19 @@ void apple::AppleRenderer::render(const dank::FrameContext &ctx) {
   pEnc->setRenderPipelineState(this->pipelineState);
   pEnc->setVertexBuffer(meshVertexBuffer, 0, 0);
 
+  for (const auto &textureEntry : textures) {
+    pEnc->setFragmentTexture(textureEntry.second,
+                             /* index */ textureEntry.first);
+  }
+
   auto view = ctx.draw.view<draw::Mesh>();
   for (auto [entity, mesh] : view.each()) {
     const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
-    pEnc->drawIndexedPrimitives(MTL::PrimitiveType::PrimitiveTypeTriangle,
-                                NS::UInteger(meshDescriptor->indexCount),
-                                MTL::IndexTypeUInt32, meshIndexBuffer,
-                                NS::UInteger(meshDescriptor->indexOffset * sizeof(uint32_t)));
+    pEnc->drawIndexedPrimitives(
+        MTL::PrimitiveType::PrimitiveTypeTriangle,
+        NS::UInteger(meshDescriptor->indexCount), MTL::IndexTypeUInt32,
+        meshIndexBuffer,
+        NS::UInteger(meshDescriptor->indexOffset * sizeof(uint32_t)));
   }
 
   pEnc->endEncoding();
@@ -107,6 +153,11 @@ void apple::AppleRenderer::release() {
     meshIndexBuffer->release();
     meshIndexBuffer = nullptr;
   }
+
+  for (auto &entry : textures) {
+    entry.second->release();
+  }
+  textures.clear();
 
   if (pipelineState != nullptr) {
     pipelineState->release();
