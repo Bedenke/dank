@@ -7,6 +7,15 @@ struct VertexData {
   packed_float2 uv;
 };
 
+
+typedef struct VertexShaderArguments {
+    array<const device VertexData *, 16> buffers [[id(0)]];
+} VertexShaderArguments;
+
+typedef struct FragmentShaderArguments {
+    array<texture2d<float>, 32> textures  [[ id(0)  ]];
+} FragmentShaderArguments;
+
 struct v2f
 {
     float4 position [[position]];
@@ -14,10 +23,11 @@ struct v2f
     float2 uv;
 };
 
-v2f vertex vertexMain( device const VertexData* vertexData [[buffer(0)]],
-                               uint vertexId [[vertex_id]])
+v2f vertex vertexMain(
+    device const VertexShaderArguments& vertexArgs [[buffer(0)]],
+    uint vertexId [[vertex_id]]) 
 {
-    const device VertexData& vd = vertexData[ vertexId ];
+    const device VertexData &vd = vertexArgs.buffers[0][vertexId];
 
     v2f o;
     o.position = float4( vd.position, 1.0 );
@@ -27,11 +37,11 @@ v2f vertex vertexMain( device const VertexData* vertexData [[buffer(0)]],
 }
 
 half4 fragment fragmentMain( v2f in [[stage_in]], 
-texture2d< half, access::sample > tex [[texture(0)]] )
+    device FragmentShaderArguments & fragmentShaderArgs [[ buffer(0) ]] )
 {
     constexpr sampler s( address::repeat, filter::linear );
-    half3 texel = tex.sample( s, in.uv ).rgb;
+    
+    float4 color = fragmentShaderArgs.textures[0].sample(s, in.uv);
 
-    // return half4( in.color, 1 );
-    return half4( texel, 1 );
+    return half4(color);
 }

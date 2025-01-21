@@ -35,6 +35,9 @@ void apple::AppleRenderer::init() {
       assert(false);
     }
 
+    vertexArgEncoder = pVertexFn->newArgumentEncoder(0);
+    fragmentArgEncoder = pFragFn->newArgumentEncoder(0);
+
     pVertexFn->release();
     pFragFn->release();
     pDesc->release();
@@ -65,6 +68,13 @@ void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
   memcpy(meshVertexBuffer->contents(), mld.vbo.data(), mld.vertexDataSize);
   memcpy(meshIndexBuffer->contents(), mld.ibo.data(), mld.indexDataSize);
 
+  // TODO: free previous vertexArgBuffer?
+  vertexArgBuffer = view->device->newBuffer(vertexArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+
+  // Encode the vertex buffers into the argument buffer
+  vertexArgEncoder->setArgumentBuffer(vertexArgBuffer, 0);
+  vertexArgEncoder->setBuffer(meshVertexBuffer, 0, 0);
+
   dank::console::log("[AppleRenderer] vertex buffer updated");
 }
 
@@ -75,6 +85,15 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
   texturesLastModified = ctx.textureLibrary.lastModified;
 
   textures.clear();
+
+  // TODO: Release previous fragmentArgBuffer?
+
+  // Create a buffer to hold the encoded arguments
+  fragmentArgBuffer = view->device->newBuffer(
+      fragmentArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+
+  // Encode the arguments into the buffer
+  fragmentArgEncoder->setArgumentBuffer(fragmentArgBuffer, 0);
 
   for (const auto &entry : ctx.textureLibrary.descriptors) {
 
@@ -100,6 +119,8 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
     pTextureDesc->release();
 
     textures[desc.index] = pTexture;
+
+    fragmentArgEncoder->setTexture(pTexture, desc.index);
   }
 
   dank::console::log("[AppleRenderer] textures updated: %d", textures.size());
@@ -120,11 +141,14 @@ void apple::AppleRenderer::render(dank::FrameContext &ctx) {
   MTL::RenderCommandEncoder *pEnc = pCmd->renderCommandEncoder(pRpd);
 
   pEnc->setRenderPipelineState(this->pipelineState);
-  pEnc->setVertexBuffer(meshVertexBuffer, 0, 0);
+  pEnc->setVertexBuffer(vertexArgBuffer, 0, 0);
+  //pEnc->useResource(meshVertexBuffer, MTL::ResourceUsageRead);
 
-  for (const auto &textureEntry : textures) {
-    pEnc->setFragmentTexture(textureEntry.second,
-                             /* index */ textureEntry.first);
+  // Set the argument buffer in the render command encoder
+  pEnc->setFragmentBuffer(fragmentArgBuffer, 0, 0);
+
+  for (const auto &entry : textures) {
+    pEnc->useResource(entry.second, MTL::ResourceUsageSample);
   }
 
   auto view = ctx.draw.view<draw::Mesh>();
@@ -140,6 +164,10 @@ void apple::AppleRenderer::render(dank::FrameContext &ctx) {
   pEnc->endEncoding();
   pCmd->presentDrawable(this->view->currentDrawable);
   pCmd->commit();
+
+  // Release the argument encoder and buffer
+  // argEncoder->release();
+  // argBuffer->release();
 
   pPool->release();
 }

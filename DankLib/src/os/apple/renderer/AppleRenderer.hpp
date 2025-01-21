@@ -19,6 +19,10 @@ private:
   void prepareMeshes(dank::FrameContext &ctx);
   void prepareTextures(dank::FrameContext &ctx);
 
+  MTL::ArgumentEncoder *vertexArgEncoder;
+  MTL::Buffer *vertexArgBuffer;
+  MTL::ArgumentEncoder *fragmentArgEncoder;
+  MTL::Buffer *fragmentArgBuffer;
 public:
   MetalView *view;
   void init() override;
