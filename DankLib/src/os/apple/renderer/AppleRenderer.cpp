@@ -14,33 +14,35 @@ void apple::AppleRenderer::init() {
   this->commandQueue = this->view->device->newCommandQueue();
 
   {
-    MTL::Function *pVertexFn =
+    MTL::Function *vertexFunction =
         this->view->shaderLibrary->newFunction(NS::String::string(
             "vertexMain", NS::StringEncoding::UTF8StringEncoding));
-    MTL::Function *pFragFn =
+    MTL::Function *fragmentFunction =
         this->view->shaderLibrary->newFunction(NS::String::string(
             "fragmentMain", NS::StringEncoding::UTF8StringEncoding));
 
-    MTL::RenderPipelineDescriptor *pDesc =
+    MTL::RenderPipelineDescriptor *pipelineDescriptor =
         MTL::RenderPipelineDescriptor::alloc()->init();
-    pDesc->setVertexFunction(pVertexFn);
-    pDesc->setFragmentFunction(pFragFn);
-    pDesc->colorAttachments()->object(0)->setPixelFormat(
+    pipelineDescriptor->setVertexFunction(vertexFunction);
+    pipelineDescriptor->setFragmentFunction(fragmentFunction);
+    pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(
         MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
 
-    NS::Error *pError;
-    pipelineState = view->device->newRenderPipelineState(pDesc, &pError);
+    NS::Error *error;
+    pipelineState =
+        view->device->newRenderPipelineState(pipelineDescriptor, &error);
+
     if (!pipelineState) {
-      console::log("%s", pError->localizedDescription()->utf8String());
+      console::log("%s", error->localizedDescription()->utf8String());
       assert(false);
     }
 
-    vertexArgEncoder = pVertexFn->newArgumentEncoder(0);
-    fragmentArgEncoder = pFragFn->newArgumentEncoder(0);
+    vertexArgEncoder = vertexFunction->newArgumentEncoder(0);
+    fragmentArgEncoder = fragmentFunction->newArgumentEncoder(0);
 
-    pVertexFn->release();
-    pFragFn->release();
-    pDesc->release();
+    vertexFunction->release();
+    fragmentFunction->release();
+    pipelineDescriptor->release();
   }
 }
 
@@ -69,10 +71,13 @@ void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
   memcpy(meshIndexBuffer->contents(), mld.ibo.data(), mld.indexDataSize);
 
   // TODO: free previous vertexArgBuffer?
-  vertexArgBuffer = view->device->newBuffer(vertexArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+  vertexArgBuffer = view->device->newBuffer(vertexArgEncoder->encodedLength(),
+                                            MTL::ResourceStorageModeShared);
 
   // Encode the vertex buffers into the argument buffer
   vertexArgEncoder->setArgumentBuffer(vertexArgBuffer, 0);
+
+  // TODO: support multiple vertex buffers
   vertexArgEncoder->setBuffer(meshVertexBuffer, 0, 0);
 
   dank::console::log("[AppleRenderer] vertex buffer updated");
@@ -102,25 +107,25 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
     texture::TextureData td{};
     desc.texture->getData(td);
 
-    MTL::TextureDescriptor *pTextureDesc =
+    MTL::TextureDescriptor *textureDesc =
         MTL::TextureDescriptor::alloc()->init();
-    pTextureDesc->setWidth(td.width);
-    pTextureDesc->setHeight(td.height);
+    textureDesc->setWidth(td.width);
+    textureDesc->setHeight(td.height);
     if (desc.texture->getType() == texture::TextureType::Color) {
-      pTextureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
-      pTextureDesc->setTextureType(MTL::TextureType2D);
+      textureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+      textureDesc->setTextureType(MTL::TextureType2D);
     }
-    pTextureDesc->setStorageMode(MTL::StorageModeShared);
-    pTextureDesc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
+    textureDesc->setStorageMode(MTL::StorageModeShared);
+    textureDesc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
 
-    MTL::Texture *pTexture = view->device->newTexture(pTextureDesc);
-    pTexture->replaceRegion(MTL::Region(0, 0, 0, td.width, td.height, 1), 0,
-                            td.data.data(), td.width * td.channels);
-    pTextureDesc->release();
+    MTL::Texture *texture = view->device->newTexture(textureDesc);
+    texture->replaceRegion(MTL::Region(0, 0, 0, td.width, td.height, 1), 0,
+                           td.data.data(), td.width * td.channels);
+    textureDesc->release();
 
-    textures[desc.index] = pTexture;
+    textures[desc.index] = texture;
 
-    fragmentArgEncoder->setTexture(pTexture, desc.index);
+    fragmentArgEncoder->setTexture(texture, desc.index);
   }
 
   dank::console::log("[AppleRenderer] textures updated: %d", textures.size());
@@ -131,45 +136,40 @@ void apple::AppleRenderer::render(dank::FrameContext &ctx) {
   prepareMeshes(ctx);
   prepareTextures(ctx);
 
-  MTL::RenderPassDescriptor *pRpd = this->view->currentRenderPassDescriptor;
-  if (pRpd == nullptr)
+  MTL::RenderPassDescriptor *renderPassDescriptor = this->view->currentRenderPassDescriptor;
+  if (renderPassDescriptor == nullptr)
     return;
 
-  NS::AutoreleasePool *pPool = NS::AutoreleasePool::alloc()->init();
+  NS::AutoreleasePool *pool = NS::AutoreleasePool::alloc()->init();
 
-  MTL::CommandBuffer *pCmd = this->commandQueue->commandBuffer();
-  MTL::RenderCommandEncoder *pEnc = pCmd->renderCommandEncoder(pRpd);
+  MTL::CommandBuffer *commandBuffer = this->commandQueue->commandBuffer();
+  MTL::RenderCommandEncoder *renderEncoder = commandBuffer->renderCommandEncoder(renderPassDescriptor);
 
-  pEnc->setRenderPipelineState(this->pipelineState);
-  pEnc->setVertexBuffer(vertexArgBuffer, 0, 0);
-  //pEnc->useResource(meshVertexBuffer, MTL::ResourceUsageRead);
+  renderEncoder->setRenderPipelineState(this->pipelineState);
+  renderEncoder->setVertexBuffer(vertexArgBuffer, 0, 0);
 
   // Set the argument buffer in the render command encoder
-  pEnc->setFragmentBuffer(fragmentArgBuffer, 0, 0);
+  renderEncoder->setFragmentBuffer(fragmentArgBuffer, 0, 0);
 
   for (const auto &entry : textures) {
-    pEnc->useResource(entry.second, MTL::ResourceUsageSample);
+    renderEncoder->useResource(entry.second, MTL::ResourceUsageSample);
   }
 
   auto view = ctx.draw.view<draw::Mesh>();
   for (auto [entity, mesh] : view.each()) {
     const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
-    pEnc->drawIndexedPrimitives(
+    renderEncoder->drawIndexedPrimitives(
         MTL::PrimitiveType::PrimitiveTypeTriangle,
         NS::UInteger(meshDescriptor->indexCount), MTL::IndexTypeUInt32,
         meshIndexBuffer,
         NS::UInteger(meshDescriptor->indexOffset * sizeof(uint32_t)));
   }
 
-  pEnc->endEncoding();
-  pCmd->presentDrawable(this->view->currentDrawable);
-  pCmd->commit();
+  renderEncoder->endEncoding();
+  commandBuffer->presentDrawable(this->view->currentDrawable);
+  commandBuffer->commit();
 
-  // Release the argument encoder and buffer
-  // argEncoder->release();
-  // argBuffer->release();
-
-  pPool->release();
+  pool->release();
 }
 
 void apple::AppleRenderer::release() {

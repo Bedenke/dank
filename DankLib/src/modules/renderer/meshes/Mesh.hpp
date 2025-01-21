@@ -44,7 +44,7 @@ struct MeshLibraryData {
 class MeshLibrary {
 private:
   std::map<uint32_t, MeshDescriptor> descriptors{};
-  
+
 public:
   size_t lastModified = 0;
 
@@ -54,13 +54,20 @@ public:
     }
   }
 
+  void add(uint32_t id, Mesh *mesh) {
+    MeshDescriptor descriptor{};
+    descriptor.mesh = mesh;
+    descriptors[id] = descriptor;
+    lastModified++;
+  }
+
   const MeshDescriptor *get(const uint32_t id) const {
     return &descriptors.at(id);
   };
 
   void getData(MeshLibraryData &output) {
     for (auto &entry : descriptors) {
-      MeshDescriptor* descriptor = &entry.second;
+      MeshDescriptor *descriptor = &entry.second;
 
       MeshData md{};
       descriptor->mesh->getData(md);
@@ -78,18 +85,12 @@ public:
       for (const auto index : md.indices) {
         output.ibo.push_back(vertexOffset + index);
       }
-      output.vbo.insert(output.vbo.end(), md.vertices.begin(), md.vertices.end());
+      output.vbo.insert(output.vbo.end(), md.vertices.begin(),
+                        md.vertices.end());
     }
 
     output.vertexDataSize = output.vbo.size() * sizeof(VertexData);
     output.indexDataSize = output.ibo.size() * sizeof(uint32_t);
-  }
-
-  void add(uint32_t id, Mesh *mesh) {
-    MeshDescriptor descriptor{};
-    descriptor.mesh = mesh;
-    descriptors[id] = descriptor;
-    lastModified++;
   }
 };
 

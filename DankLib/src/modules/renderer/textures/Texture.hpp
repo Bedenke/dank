@@ -39,10 +39,6 @@ public:
     }
   }
 
-  const TextureDescriptor *get(const uint32_t id) const {
-    return &descriptors.at(id);
-  };
-
   void add(uint32_t id, Texture *texture) {
     TextureDescriptor descriptor{};
     descriptor.texture = texture;
@@ -51,6 +47,10 @@ public:
 
     lastModified++;
   }
+
+  const TextureDescriptor *get(const uint32_t id) const {
+    return &descriptors.at(id);
+  };
 };
 
 } // namespace texture
