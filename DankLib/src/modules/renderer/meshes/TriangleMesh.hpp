@@ -8,8 +8,7 @@ namespace mesh {
 
 class Triangle : public Mesh {
 public:
-  static const uint32_t ID = 1;
-
+  
   void getData(MeshData &output) override {
     output.vertices.push_back(VertexData{
         {-1.0f, -1.0f, 0.0f}, // vertices

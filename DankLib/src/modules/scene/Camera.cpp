@@ -29,7 +29,6 @@ void Camera::update(FrameContext &ctx) {
   } else {
     proj = glm::ortho(-width / scale, width / scale, -height / scale,
                       height / scale, znear, zfar);
-    // proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, znear, zfar);
   }
   view = glm::lookAt(pos, target, up);
   frustrum.update(proj * view);

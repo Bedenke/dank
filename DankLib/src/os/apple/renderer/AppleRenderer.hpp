@@ -32,6 +32,9 @@ private:
   MTL::Buffer *meshInstanceBuffer = nullptr;
   MetalView *view;
 public:
+  ~AppleRenderer() {
+    release();
+  }
   void initOrUpdateView(MetalView *view);
   void render(FrameContext &ctx, Scene *scene) override;
   void release();

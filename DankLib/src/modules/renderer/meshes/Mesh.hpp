@@ -40,6 +40,7 @@ struct MeshLibraryData {
 class MeshLibrary {
 private:
   std::map<uint32_t, MeshDescriptor> descriptors{};
+  uint32_t nextId = 1;
 
 public:
   size_t lastModified = 0;
@@ -50,11 +51,18 @@ public:
     }
   }
 
-  void add(uint32_t id, Mesh *mesh) {
+  uint32_t add(Mesh *mesh) {
     MeshDescriptor descriptor{};
     descriptor.mesh = mesh;
-    descriptors[id] = descriptor;
+    descriptors[nextId] = descriptor;
+    nextId++;
     lastModified++;
+    return nextId - 1;
+  }
+
+  void clear() {
+    nextId = 1;
+    descriptors.clear();
   }
 
   const MeshDescriptor *get(const uint32_t id) const {

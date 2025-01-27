@@ -11,26 +11,41 @@
 
 using namespace dank;
 
-Engine engine{};
-apple::AppleRenderer renderer{};
+Engine *engine;
+apple::AppleRenderer *renderer;
+bool viewResized = false;
 
-void apple::onStart() { console::log("[AppleOS] starting"); }
+void apple::onStart() {
+  engine = new Engine();
+  renderer = new apple::AppleRenderer();
+  console::log("[AppleOS] starting");
+}
 
 void apple::onStop() {
-  renderer.release();
+  delete engine;
+  delete renderer;
   console::log("[AppleOS] stopped");
 }
 
-void apple::onHotReload() { console::log("[AppleOS] hot reload"); }
+void apple::onHotReload() {
+  engine = new Engine();
+  renderer = new apple::AppleRenderer();
+  console::log("[AppleOS] hot reload");
+}
 
 void apple::onDraw(MetalView *view) {
-  engine.update();
+  if (viewResized) {
+    viewResized = false;
+    int width = view->viewWidth;
+    int height = view->viewHeight;
+    engine->onViewResize(width, height);
+    console::log("[AppleOS] view resized %dx%d", width, height);
+  }
 
-  renderer.initOrUpdateView(view);
-  renderer.render(engine.ctx, engine.scene);
+  engine->update();
+
+  renderer->initOrUpdateView(view);
+  renderer->render(engine->ctx, engine->scene);
 }
 
-void apple::onResize(int width, int height) {
-  engine.onViewResize(width, height);
-  console::log("[AppleOS] view resized %dx%d", width, height);
-}
+void apple::onResize(int width, int height) { viewResized = true; }

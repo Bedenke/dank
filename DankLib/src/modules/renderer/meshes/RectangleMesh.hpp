@@ -8,7 +8,6 @@ namespace mesh {
 
 class Rectangle : public Mesh {
 public:
-  static const uint32_t ID = 2;
 
   void getData(MeshData &output) override {
     output.vertices.push_back(VertexData{

@@ -6,6 +6,9 @@
 
 namespace dank {
 class Scene {
+  private:
+  bool initialized = false;
+  void init(FrameContext &ctx);
 public:
   Camera camera{};
   entt::registry entities{};

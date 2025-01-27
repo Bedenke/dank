@@ -15,11 +15,6 @@ double Engine::getTimeInMilliseconds() const {
 }
 
 Engine::Engine() {
-  ctx.meshLibrary.add(mesh::Triangle::ID, new mesh::Triangle());
-  ctx.meshLibrary.add(mesh::Rectangle::ID, new mesh::Rectangle());
-  ctx.textureLibrary.add(texture::DebugTexture::ID,
-                         new texture::DebugTexture());
-
   scene = new Scene();
   framePerSecondAccumulator.lastTime = getTimeInMilliseconds();
   console::log("Engine initialized");

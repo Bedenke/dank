@@ -29,23 +29,32 @@ struct TextureDescriptor {
 
 class TextureLibrary {
 private:
+  uint32_t nextId = 1;
+
 public:
   std::map<uint32_t, TextureDescriptor> descriptors{};
   size_t lastModified = 0;
 
   ~TextureLibrary() {
+    clear();
+  }
+
+  void clear() {
     for (auto &entry : descriptors) {
       delete entry.second.texture;
     }
+    nextId = 1;
+    descriptors.clear();
   }
 
-  void add(uint32_t id, Texture *texture) {
+  uint32_t add(Texture *texture) {
     TextureDescriptor descriptor{};
     descriptor.texture = texture;
     descriptor.index = descriptors.size();
-    descriptors[id] = descriptor;
-
+    descriptors[nextId] = descriptor;
+    nextId++;
     lastModified++;
+    return nextId - 1;
   }
 
   const TextureDescriptor *get(const uint32_t id) const {
