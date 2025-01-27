@@ -1,14 +1,13 @@
 #pragma once
 #include "modules/FrameContext.hpp"
+#include "modules/scene/Scene.hpp"
 
 namespace dank
 {
     class Renderer
     {
     public:
-        virtual void init() = 0;
-        virtual void render(FrameContext &ctx) = 0;
-        virtual void release() = 0;
+        virtual void render(FrameContext &ctx, Scene *scene) = 0;
     };
 
     namespace draw

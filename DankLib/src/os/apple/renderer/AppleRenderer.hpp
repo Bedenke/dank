@@ -2,6 +2,7 @@
 
 #include "modules/renderer/Renderer.hpp"
 #include "os/apple/AppleOS.hpp"
+#include "os/apple/Metal.hpp"
 
 namespace dank {
 namespace apple {
@@ -16,6 +17,7 @@ private:
   uint32_t meshesLastModified = 0;
   uint32_t texturesLastModified = 0;
   std::map<uint32_t, MTL::Texture*> textures{};
+  void init();
   void prepareMeshes(dank::FrameContext &ctx);
   void prepareTextures(dank::FrameContext &ctx);
 
@@ -23,11 +25,12 @@ private:
   MTL::Buffer *vertexArgBuffer;
   MTL::ArgumentEncoder *fragmentArgEncoder;
   MTL::Buffer *fragmentArgBuffer;
-public:
+  MTL::Buffer *cameraUBOBuffer;
   MetalView *view;
-  void init() override;
-  void render(dank::FrameContext &ctx) override;
-  void release() override;
+public:
+  void initOrUpdateView(MetalView *view);
+  void render(FrameContext &ctx, Scene *scene) override;
+  void release();
 };
 } // namespace apple
 

@@ -12,6 +12,8 @@ namespace dank
             MTL::Library *shaderLibrary;
             MTL::RenderPassDescriptor *currentRenderPassDescriptor;
             MTL::Drawable *currentDrawable;
+            int viewWidth;
+            int viewHeight;
         };
 
         extern "C" void onStart();

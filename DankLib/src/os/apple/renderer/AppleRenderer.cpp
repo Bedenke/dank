@@ -3,12 +3,22 @@
 #include "modules/renderer/Renderer.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
 #include "modules/renderer/textures/Texture.hpp"
+#include "modules/scene/Scene.hpp"
 #include "os/apple/Metal.hpp"
 #include <cstdint>
 #include <simd/simd.h>
 #include <sys/types.h>
 
 using namespace dank;
+
+void apple::AppleRenderer::initOrUpdateView(MetalView *view) {
+  if (this->view == nullptr) {
+    this->view = view;
+    init();
+  } else {
+    this->view = view;
+  }
+}
 
 void apple::AppleRenderer::init() {
   this->commandQueue = this->view->device->newCommandQueue();
@@ -43,6 +53,12 @@ void apple::AppleRenderer::init() {
     vertexFunction->release();
     fragmentFunction->release();
     pipelineDescriptor->release();
+
+    // Camera Buffer
+    cameraUBOBuffer = view->device->newBuffer(sizeof(dank::CameraUBO),
+                                              MTL::ResourceStorageModeShared);
+    cameraUBOBuffer->setLabel(NS::String::string(
+        "CameraUBO", NS::StringEncoding::UTF8StringEncoding));
   }
 }
 
@@ -63,9 +79,13 @@ void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
 
   meshVertexBuffer = view->device->newBuffer(mld.vertexDataSize,
                                              MTL::ResourceStorageModeShared);
+  meshVertexBuffer->setLabel(NS::String::string(
+      "MeshVertexBuffer", NS::StringEncoding::UTF8StringEncoding));
 
   meshIndexBuffer = view->device->newBuffer(mld.indexDataSize,
                                             MTL::ResourceStorageModeShared);
+  meshIndexBuffer->setLabel(NS::String::string(
+      "MeshIndexBuffer", NS::StringEncoding::UTF8StringEncoding));
 
   memcpy(meshVertexBuffer->contents(), mld.vbo.data(), mld.vertexDataSize);
   memcpy(meshIndexBuffer->contents(), mld.ibo.data(), mld.indexDataSize);
@@ -96,6 +116,8 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
   // Create a buffer to hold the encoded arguments
   fragmentArgBuffer = view->device->newBuffer(
       fragmentArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+  fragmentArgBuffer->setLabel(NS::String::string(
+      "TextureArgBuffer", NS::StringEncoding::UTF8StringEncoding));
 
   // Encode the arguments into the buffer
   fragmentArgEncoder->setArgumentBuffer(fragmentArgBuffer, 0);
@@ -131,22 +153,30 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
   dank::console::log("[AppleRenderer] textures updated: %d", textures.size());
 }
 
-void apple::AppleRenderer::render(dank::FrameContext &ctx) {
-
+void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
   prepareMeshes(ctx);
   prepareTextures(ctx);
 
-  MTL::RenderPassDescriptor *renderPassDescriptor = this->view->currentRenderPassDescriptor;
+  MTL::RenderPassDescriptor *renderPassDescriptor =
+      this->view->currentRenderPassDescriptor;
   if (renderPassDescriptor == nullptr)
     return;
 
   NS::AutoreleasePool *pool = NS::AutoreleasePool::alloc()->init();
 
   MTL::CommandBuffer *commandBuffer = this->commandQueue->commandBuffer();
-  MTL::RenderCommandEncoder *renderEncoder = commandBuffer->renderCommandEncoder(renderPassDescriptor);
+  MTL::RenderCommandEncoder *renderEncoder =
+      commandBuffer->renderCommandEncoder(renderPassDescriptor);
 
   renderEncoder->setRenderPipelineState(this->pipelineState);
   renderEncoder->setVertexBuffer(vertexArgBuffer, 0, 0);
+
+  // Camera
+  auto cameraUBO =
+      reinterpret_cast<dank::CameraUBO *>(cameraUBOBuffer->contents());
+  scene->camera.getCameraUBO(cameraUBO);
+
+  renderEncoder->setVertexBuffer(cameraUBOBuffer, 0, 1);
 
   // Set the argument buffer in the render command encoder
   renderEncoder->setFragmentBuffer(fragmentArgBuffer, 0, 0);
@@ -182,6 +212,11 @@ void apple::AppleRenderer::release() {
     meshIndexBuffer = nullptr;
   }
 
+  if (cameraUBOBuffer != nullptr) {
+    cameraUBOBuffer->release();
+    cameraUBOBuffer = nullptr;
+  }
+
   for (auto &entry : textures) {
     entry.second->release();
   }
@@ -196,4 +231,6 @@ void apple::AppleRenderer::release() {
     commandQueue->release();
     commandQueue = nullptr;
   }
+
+  dank::console::log("[AppleRenderer] released");
 }

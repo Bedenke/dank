@@ -17,6 +17,7 @@
     NSString* currentMetalLib;
     NSDate *lastUpdateTime;
     float hotReloadTimer;
+    bool resized;
     
     id<MTLLibrary> shaderLibrary;
     
@@ -173,8 +174,9 @@
         
         [self mtkView:view drawableSizeWillChange:view.drawableSize];
 
+        resized = true;
         onStart();
-        
+
         return self;
     }
     
@@ -194,14 +196,25 @@
         reloaded = [self hotReload:view];
     }
 
-    if (reloaded) onHotReload();
-        
+    if (reloaded) {
+        onHotReload();
+        resized = true;
+    }
+    
     dank::apple::MetalView metalView;
     metalView.device =(__bridge MTL::Device *) view.device;
     metalView.shaderLibrary = (__bridge MTL::Library *) shaderLibrary;
     metalView.currentDrawable = (__bridge MTL::Drawable *) view.currentDrawable;
     metalView.currentRenderPassDescriptor = (__bridge MTL::RenderPassDescriptor *) view.currentRenderPassDescriptor;
+    metalView.viewWidth = [view drawableSize].width;
+    metalView.viewHeight = [view drawableSize].height;
+        
     onDraw(&metalView);
+        
+    if (resized) {
+        resized = false;
+        onResize(metalView.viewWidth, metalView.viewHeight);
+    }
 }
 
 - (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size

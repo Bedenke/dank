@@ -7,7 +7,6 @@ struct VertexData {
   packed_float2 uv;
 };
 
-
 typedef struct VertexShaderArguments {
     array<const device VertexData *, 16> buffers [[id(0)]];
 } VertexShaderArguments;
@@ -15,6 +14,19 @@ typedef struct VertexShaderArguments {
 typedef struct FragmentShaderArguments {
     array<texture2d<float>, 32> textures  [[ id(0)  ]];
 } FragmentShaderArguments;
+
+
+struct CameraUBO {
+  float4x4 viewProj;
+  float4x4 view;
+  float4x4 proj;
+  packed_float4 position;
+  packed_float4 lightViewPos;
+  float nearPlane;
+  float farPlane;
+  float gamma;
+  float time;
+};
 
 struct v2f
 {
@@ -25,12 +37,13 @@ struct v2f
 
 v2f vertex vertexMain(
     device const VertexShaderArguments& vertexArgs [[buffer(0)]],
+    device const CameraUBO& camera [[buffer(1)]],
     uint vertexId [[vertex_id]]) 
 {
     const device VertexData &vd = vertexArgs.buffers[0][vertexId];
 
     v2f o;
-    o.position = float4( vd.position, 1.0 );
+    o.position = camera.viewProj * float4( vd.position, 1.0 );
     o.color = half3 ( vd.normal );
     o.uv = float2(vd.uv);
     return o;

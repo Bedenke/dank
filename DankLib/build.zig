@@ -43,6 +43,7 @@ pub fn build(b: *std.Build) void {
             "modules/engine/Console.cpp",
             "modules/engine/Engine.cpp",
             "modules/scene/Scene.cpp",
+            "modules/scene/Camera.cpp",
             "os/apple/AppleOS.cpp",
             "os/apple/renderer/AppleRenderer.cpp",
         },

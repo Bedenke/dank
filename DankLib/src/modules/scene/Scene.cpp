@@ -7,6 +7,12 @@
 using namespace dank;
 
 void Scene::update(FrameContext &ctx) {
+  camera.mode = ProjectionMode::Orthographic;
+  camera.pos = glm::vec3(0.0f, 0.0f, -1.0f);
+  camera.scale = 200.0f;
+  camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
+  camera.update(ctx);
+
   ctx.draw.clear();
 
   auto entity1 = ctx.draw.create();

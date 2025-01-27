@@ -3,7 +3,6 @@
 #include "modules/Foundation.hpp"
 #include "modules/FrameContext.hpp"
 #include "modules/scene/Scene.hpp"
-#include "modules/renderer/Renderer.hpp"
 
 namespace dank
 {
@@ -23,8 +22,10 @@ namespace dank
     public:
         FrameContext ctx;
         Scene *scene = nullptr;
-        void init();
-        void update(Renderer *renderer);
+        Engine();
+        ~Engine();
+        void onViewResize(float viewWidth, float viewHeight);
+        void update();
     };
 
 } // namespace dank

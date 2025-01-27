@@ -5,53 +5,57 @@
 #include "modules/renderer/textures/DebugTexture.hpp"
 #include <chrono>
 
-double dank::Engine::getTimeInMilliseconds() const
-{
-    auto now = std::chrono::system_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
-    return static_cast<double>(duration.count());
+using namespace dank;
+
+double Engine::getTimeInMilliseconds() const {
+  auto now = std::chrono::system_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      now.time_since_epoch());
+  return static_cast<double>(duration.count());
 }
 
-void dank::Engine::init()
-{
-    ctx.meshLibrary.add(mesh::Triangle::ID, new mesh::Triangle());
-    ctx.meshLibrary.add(mesh::Rectangle::ID, new mesh::Rectangle());
-    ctx.textureLibrary.add(texture::DebugTexture::ID, new texture::DebugTexture());
-    
-    scene = new dank::Scene();
-    framePerSecondAccumulator.lastTime = getTimeInMilliseconds();
-    dank::console::log("Engine initialized");
+Engine::Engine() {
+  ctx.meshLibrary.add(mesh::Triangle::ID, new mesh::Triangle());
+  ctx.meshLibrary.add(mesh::Rectangle::ID, new mesh::Rectangle());
+  ctx.textureLibrary.add(texture::DebugTexture::ID,
+                         new texture::DebugTexture());
+
+  scene = new Scene();
+  framePerSecondAccumulator.lastTime = getTimeInMilliseconds();
+  console::log("Engine initialized");
 }
 
-void dank::Engine::update(Renderer *renderer)
-{
+Engine::~Engine() {
+  delete scene;
+  console::log("Engine released");
+}
 
-    // Calculate delta time
-    double currentTime = getTimeInMilliseconds();
-    double deltaTime = currentTime - framePerSecondAccumulator.lastTime;
+void Engine::onViewResize(float viewWidth, float viewHeight) {
+    scene->camera.onViewResize(viewWidth, viewHeight);
+}
 
-    // Calculate frames per second
-    framePerSecondAccumulator.lastTime = currentTime;
-    framePerSecondAccumulator.time += deltaTime;
-    framePerSecondAccumulator.frames++;
-    if (framePerSecondAccumulator.time >= 1000)
-    {
-        ctx.framesPerSecond = framePerSecondAccumulator.frames;
-        framePerSecondAccumulator.time = 0;
-        framePerSecondAccumulator.frames = 0;
-        dank::console::log("fps: %d | %.2fms", ctx.framesPerSecond, deltaTime);
-    }
+void Engine::update() {
 
-    // Update context
-    ctx.deltaTime = deltaTime;
-    ctx.absoluteTime += deltaTime;
-    ctx.absoluteFrame++;
+  // Calculate delta time
+  double currentTime = getTimeInMilliseconds();
+  double deltaTime = currentTime - framePerSecondAccumulator.lastTime;
 
-    // Update scene
-    if (scene != nullptr)
-    {
-        scene->update(ctx);
-    }
+  // Calculate frames per second
+  framePerSecondAccumulator.lastTime = currentTime;
+  framePerSecondAccumulator.time += deltaTime;
+  framePerSecondAccumulator.frames++;
+  if (framePerSecondAccumulator.time >= 1000) {
+    ctx.framesPerSecond = framePerSecondAccumulator.frames;
+    framePerSecondAccumulator.time = 0;
+    framePerSecondAccumulator.frames = 0;
+    console::log("[dank] fps: %d | %.2fms", ctx.framesPerSecond, deltaTime);
+  }
 
-    renderer->render(ctx);
+  // Update context
+  ctx.deltaTime = deltaTime;
+  ctx.absoluteTime += deltaTime;
+  ctx.absoluteFrame++;
+
+  // Update scene
+  scene->update(ctx);
 }
