@@ -5,9 +5,6 @@
 #include "modules/renderer/textures/Texture.hpp"
 #include "modules/scene/Scene.hpp"
 #include "os/apple/Metal.hpp"
-#include <cstdint>
-#include <simd/simd.h>
-#include <sys/types.h>
 
 using namespace dank;
 
@@ -23,6 +20,29 @@ void apple::AppleRenderer::initOrUpdateView(MetalView *view) {
 void apple::AppleRenderer::init() {
   this->commandQueue = this->view->device->newCommandQueue();
 
+  // Indirect command buffer
+  {
+    MTL::IndirectCommandBufferDescriptor *icbDescriptor =
+        MTL::IndirectCommandBufferDescriptor::alloc()->init();
+    icbDescriptor->setCommandTypes(MTL::IndirectCommandTypeDrawIndexed);
+    icbDescriptor->setInheritBuffers(true);
+    icbDescriptor->setInheritPipelineState(true);
+    indirectCommandBuffer = this->view->device->newIndirectCommandBuffer(
+        icbDescriptor, instancePageSize, 0);
+    indirectCommandBuffer->setLabel(NS::String::string(
+        "IndirectDrawCommands", NS::StringEncoding::UTF8StringEncoding));
+    icbDescriptor->release();
+  }
+
+  // Mesh Instances Buffer
+  {
+    meshInstanceBuffer =
+        view->device->newBuffer(sizeof(dank::draw::Mesh) * instancePageSize,
+                                MTL::ResourceStorageModeShared);
+    meshInstanceBuffer->setLabel(NS::String::string(
+        "MeshInstanceBuffer", NS::StringEncoding::UTF8StringEncoding));
+  }
+
   {
     MTL::Function *vertexFunction =
         this->view->shaderLibrary->newFunction(NS::String::string(
@@ -35,6 +55,7 @@ void apple::AppleRenderer::init() {
         MTL::RenderPipelineDescriptor::alloc()->init();
     pipelineDescriptor->setVertexFunction(vertexFunction);
     pipelineDescriptor->setFragmentFunction(fragmentFunction);
+    pipelineDescriptor->setSupportIndirectCommandBuffers(true);
     pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(
         MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
 
@@ -90,9 +111,12 @@ void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
   memcpy(meshVertexBuffer->contents(), mld.vbo.data(), mld.vertexDataSize);
   memcpy(meshIndexBuffer->contents(), mld.ibo.data(), mld.indexDataSize);
 
-  // TODO: free previous vertexArgBuffer?
-  vertexArgBuffer = view->device->newBuffer(vertexArgEncoder->encodedLength(),
-                                            MTL::ResourceStorageModeShared);
+  if (vertexArgBuffer == nullptr) {
+    vertexArgBuffer = view->device->newBuffer(vertexArgEncoder->encodedLength(),
+                                              MTL::ResourceStorageModeShared);
+    vertexArgBuffer->setLabel(NS::String::string(
+        "VertexArgBuffer", NS::StringEncoding::UTF8StringEncoding));
+  }
 
   // Encode the vertex buffers into the argument buffer
   vertexArgEncoder->setArgumentBuffer(vertexArgBuffer, 0);
@@ -111,13 +135,13 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
 
   textures.clear();
 
-  // TODO: Release previous fragmentArgBuffer?
-
-  // Create a buffer to hold the encoded arguments
-  fragmentArgBuffer = view->device->newBuffer(
-      fragmentArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
-  fragmentArgBuffer->setLabel(NS::String::string(
-      "TextureArgBuffer", NS::StringEncoding::UTF8StringEncoding));
+  if (fragmentArgBuffer == nullptr) {
+    // Create a buffer to hold the encoded arguments
+    fragmentArgBuffer = view->device->newBuffer(
+        fragmentArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+    fragmentArgBuffer->setLabel(NS::String::string(
+        "TextureArgBuffer", NS::StringEncoding::UTF8StringEncoding));
+  }
 
   // Encode the arguments into the buffer
   fragmentArgEncoder->setArgumentBuffer(fragmentArgBuffer, 0);
@@ -185,16 +209,33 @@ void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
     renderEncoder->useResource(entry.second, MTL::ResourceUsageSample);
   }
 
+  uint32_t meshInstanceCount = 0;
   auto view = ctx.draw.view<draw::Mesh>();
   for (auto [entity, mesh] : view.each()) {
     const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
-    renderEncoder->drawIndexedPrimitives(
+
+    draw::Mesh *bufferData =
+        reinterpret_cast<draw::Mesh *>(meshInstanceBuffer->contents());
+    bufferData[meshInstanceCount] = mesh;
+
+    MTL::IndirectRenderCommand *command =
+        indirectCommandBuffer->indirectRenderCommand(meshInstanceCount);
+
+    command->drawIndexedPrimitives(
         MTL::PrimitiveType::PrimitiveTypeTriangle,
         NS::UInteger(meshDescriptor->indexCount), MTL::IndexTypeUInt32,
         meshIndexBuffer,
-        NS::UInteger(meshDescriptor->indexOffset * sizeof(uint32_t)));
+        NS::UInteger(meshDescriptor->indexOffset * sizeof(uint32_t)), 1, 0,
+        meshInstanceCount);
+
+    meshInstanceCount++;
   }
 
+  renderEncoder->setVertexBuffer(meshInstanceBuffer, 0, 2);
+  renderEncoder->useResource(meshInstanceBuffer, MTL::ResourceUsageRead);
+
+  renderEncoder->executeCommandsInBuffer(indirectCommandBuffer,
+                                         NS::Range(0, meshInstanceCount));
   renderEncoder->endEncoding();
   commandBuffer->presentDrawable(this->view->currentDrawable);
   commandBuffer->commit();
@@ -215,6 +256,31 @@ void apple::AppleRenderer::release() {
   if (cameraUBOBuffer != nullptr) {
     cameraUBOBuffer->release();
     cameraUBOBuffer = nullptr;
+  }
+  if (vertexArgBuffer != nullptr) {
+    vertexArgBuffer->release();
+    vertexArgBuffer = nullptr;
+  }
+  if (fragmentArgBuffer != nullptr) {
+    fragmentArgBuffer->release();
+    fragmentArgBuffer = nullptr;
+  }
+  if (meshInstanceBuffer != nullptr) {
+    meshInstanceBuffer->release();
+    meshInstanceBuffer = nullptr;
+  }
+
+  if (vertexArgEncoder != nullptr) {
+    vertexArgEncoder->release();
+    vertexArgEncoder = nullptr;
+  }
+  if (fragmentArgEncoder != nullptr) {
+    fragmentArgEncoder->release();
+    fragmentArgEncoder = nullptr;
+  }
+  if (indirectCommandBuffer != nullptr) {
+    indirectCommandBuffer->release();
+    indirectCommandBuffer = nullptr;
   }
 
   for (auto &entry : textures) {

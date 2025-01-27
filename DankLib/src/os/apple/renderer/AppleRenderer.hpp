@@ -10,6 +10,7 @@ namespace apple {
 class AppleRenderer : public dank::Renderer {
 private:
   MTL::CommandQueue *commandQueue;
+  MTL::IndirectCommandBuffer *indirectCommandBuffer = nullptr;
   MTL::RenderPipelineState *pipelineState = nullptr;
   
   MTL::Buffer *meshVertexBuffer = nullptr;
@@ -26,6 +27,9 @@ private:
   MTL::ArgumentEncoder *fragmentArgEncoder;
   MTL::Buffer *fragmentArgBuffer;
   MTL::Buffer *cameraUBOBuffer;
+
+  uint32_t instancePageSize = 1024;
+  MTL::Buffer *meshInstanceBuffer = nullptr;
   MetalView *view;
 public:
   void initOrUpdateView(MetalView *view);

@@ -27,24 +27,33 @@ struct CameraUBO {
   float gamma;
   float time;
 };
+struct InstanceData {
+  float4x4 transform;
+  packed_float4 color;
+  uint32_t meshId;
+  uint32_t textureId;
+  packed_float2 _pad;
+};
 
 struct v2f
 {
     float4 position [[position]];
-    half3 color;
+    float4 color;
     float2 uv;
 };
 
 v2f vertex vertexMain(
     device const VertexShaderArguments& vertexArgs [[buffer(0)]],
     device const CameraUBO& camera [[buffer(1)]],
-    uint vertexId [[vertex_id]]) 
+    device const InstanceData* instanceData [[buffer(2)]],
+    uint vertexId [[vertex_id]],
+    uint instanceId [[instance_id]]) 
 {
     const device VertexData &vd = vertexArgs.buffers[0][vertexId];
 
     v2f o;
-    o.position = camera.viewProj * float4( vd.position, 1.0 );
-    o.color = half3 ( vd.normal );
+    o.position = camera.viewProj * instanceData[ instanceId ].transform * float4( vd.position, 1.0 );
+    o.color = instanceData[ instanceId ].color;
     o.uv = float2(vd.uv);
     return o;
 }
@@ -54,7 +63,7 @@ half4 fragment fragmentMain( v2f in [[stage_in]],
 {
     constexpr sampler s( address::repeat, filter::linear );
     
-    float4 color = fragmentShaderArgs.textures[0].sample(s, in.uv);
+    float4 color = fragmentShaderArgs.textures[0].sample(s, in.uv) * in.color;
 
     return half4(color);
 }

@@ -2,8 +2,8 @@
 
 Up next:
 - [ ] Sprite Library
-- [ ] Render Instances
-- [ ] Camera
+- [x] Instances + Indirect Draw Commands
+- [x] Camera
 
 Done:
 - [x] ECS rendering abstraction

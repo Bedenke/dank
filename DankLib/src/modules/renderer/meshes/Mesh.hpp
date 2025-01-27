@@ -1,9 +1,5 @@
 #pragma once
-#include "libs/glm/fwd.hpp"
 #include "modules/Foundation.hpp"
-#include <cstdint>
-#include <map>
-#include <vector>
 
 namespace dank {
 namespace mesh {

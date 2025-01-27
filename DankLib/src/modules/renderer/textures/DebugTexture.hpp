@@ -1,6 +1,7 @@
 #pragma once
 
 #include "modules/renderer/textures/Texture.hpp"
+
 namespace dank {
 namespace texture {
 class DebugTexture : public Texture {
