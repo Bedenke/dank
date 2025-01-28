@@ -30,8 +30,8 @@ struct CameraUBO {
 struct InstanceData {
   float4x4 transform;
   packed_float4 color;
-  uint32_t meshId;
-  uint32_t textureId;
+  uint32_t bufferIndex;
+  uint32_t textureIndex;
   packed_float2 _pad;
 };
 
@@ -40,6 +40,7 @@ struct v2f
     float4 position [[position]];
     float4 color;
     float2 uv;
+    uint32_t textureIndex;
 };
 
 v2f vertex vertexMain(
@@ -49,12 +50,14 @@ v2f vertex vertexMain(
     uint vertexId [[vertex_id]],
     uint instanceId [[instance_id]]) 
 {
-    const device VertexData &vd = vertexArgs.buffers[0][vertexId];
+    const device InstanceData &id = instanceData[ instanceId ];
+    const device VertexData &vd = vertexArgs.buffers[id.bufferIndex][vertexId];
 
     v2f o;
-    o.position = camera.viewProj * instanceData[ instanceId ].transform * float4( vd.position, 1.0 );
-    o.color = instanceData[ instanceId ].color;
+    o.position = camera.viewProj * id.transform * float4( vd.position, 1.0 );
+    o.color = id.color;
     o.uv = float2(vd.uv);
+    o.textureIndex = id.textureIndex;
     return o;
 }
 
@@ -63,7 +66,7 @@ half4 fragment fragmentMain( v2f in [[stage_in]],
 {
     constexpr sampler s( address::repeat, filter::linear );
     
-    float4 color = fragmentShaderArgs.textures[0].sample(s, in.uv) * in.color;
+    float4 color = fragmentShaderArgs.textures[in.textureIndex].sample(s, in.uv) * in.color;
 
     return half4(color);
 }

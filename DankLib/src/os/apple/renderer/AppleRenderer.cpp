@@ -37,7 +37,7 @@ void apple::AppleRenderer::init() {
   // Mesh Instances Buffer
   {
     meshInstanceBuffer =
-        view->device->newBuffer(sizeof(dank::draw::Mesh) * instancePageSize,
+        view->device->newBuffer(sizeof(instance::InstanceData) * instancePageSize,
                                 MTL::ResourceStorageModeShared);
     meshInstanceBuffer->setLabel(NS::String::string(
         "MeshInstanceBuffer", NS::StringEncoding::UTF8StringEncoding));
@@ -213,10 +213,14 @@ void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
   auto view = ctx.draw.view<draw::Mesh>();
   for (auto [entity, mesh] : view.each()) {
     const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
+    const auto textureDescriptor = ctx.textureLibrary.get(mesh.textureId);
 
-    draw::Mesh *bufferData =
-        reinterpret_cast<draw::Mesh *>(meshInstanceBuffer->contents());
-    bufferData[meshInstanceCount] = mesh;
+    instance::InstanceData *bufferData =
+        reinterpret_cast<instance::InstanceData *>(meshInstanceBuffer->contents());
+    bufferData[meshInstanceCount].transform = mesh.transform;
+    bufferData[meshInstanceCount].color = mesh.color;
+    bufferData[meshInstanceCount].meshIndex = meshDescriptor->bufferIndex;
+    bufferData[meshInstanceCount].textureIndex = textureDescriptor->index;
 
     MTL::IndirectRenderCommand *command =
         indirectCommandBuffer->indirectRenderCommand(meshInstanceCount);

@@ -1,5 +1,6 @@
 #pragma once
 #include "modules/Foundation.hpp"
+#include <cstdint>
 
 namespace dank {
 namespace mesh {
@@ -23,6 +24,7 @@ public:
 
 struct MeshDescriptor {
   Mesh *mesh = nullptr;
+  uint32_t bufferIndex = 0;
   uint32_t vertexOffset = 0;
   uint32_t vertexCount = 0;
   uint32_t indexOffset = 0;
@@ -75,6 +77,8 @@ public:
 
       MeshData md{};
       descriptor->mesh->getData(md);
+      
+      descriptor->bufferIndex = 0; // TODO: support multiple buffers
 
       descriptor->vertexOffset = output.vbo.size();
       descriptor->vertexCount = md.vertices.size();

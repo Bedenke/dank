@@ -9,6 +9,12 @@ public:
   static const uint32_t ID = 1;
   TextureType getType() { return TextureType::Color; }
 
+  void getMetaData(TextureMetaData &output) {
+    output.channels = 4;
+    output.width = 128;
+    output.height = 128;
+  }
+
   void getData(TextureData &output) {
 
     const uint32_t tw = 128;
