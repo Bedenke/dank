@@ -1,4 +1,5 @@
 #include "Scene.hpp"
+#include "libs/glm/fwd.hpp"
 #include "modules/engine/Console.hpp"
 #include "modules/renderer/Renderer.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
@@ -7,37 +8,56 @@
 #include "modules/renderer/meshes/TriangleMesh.hpp"
 #include "modules/renderer/textures/DebugTexture.hpp"
 #include "modules/renderer/textures/Texture.hpp"
+#include "modules/renderer/textures/Texture2D.hpp"
 
 using namespace dank;
 
-struct SceneIDs {
-  uint32_t triangleMesh = 0;
-  uint32_t rectangleMesh = 0;
-  uint32_t debugTexture1 = 0;
-  uint32_t debugTexture2 = 0;
-  uint32_t spriteMesh1 = 0;
-  uint32_t spriteMesh2 = 0;
+struct TextureIDs {
+  uint32_t sprites = 0;
+  uint32_t starfield = 0;
 };
 
-SceneIDs sceneIDs;
+struct Starfield {
+  uint32_t meshId = 0;
+  uint32_t textureId = 0;
+};
+
+struct Spaceship {
+  glm::vec3 pos;
+  glm::vec3 scale{1, 1, 1};
+  uint32_t meshId = 0;
+  uint32_t textureId = 0;
+};
+
+struct SceneDescriptor {
+  TextureIDs textures;
+  Starfield starfield;
+  Spaceship spaceship1;
+};
+
+SceneDescriptor myScene;
 
 void Scene::init(FrameContext &ctx) {
   ctx.textureLibrary.clear();
   ctx.meshLibrary.clear();
 
   // Add textures
-  texture::Texture *texture1 = new texture::DebugTexture();
-  texture::Texture *texture2 = new texture::DebugTexture();
-  sceneIDs.debugTexture1 = ctx.textureLibrary.add(texture1);
-  sceneIDs.debugTexture2 = ctx.textureLibrary.add(texture2);
+  myScene.textures.sprites = ctx.textureLibrary.add(
+      new texture::Texture2D(URI{"file://Demo/Sprites.png"}));
+  myScene.textures.starfield = ctx.textureLibrary.add(
+      new texture::Texture2D(URI{"file://Demo/Starfield.png"}));
 
-  // Add meshes
-  sceneIDs.triangleMesh = ctx.meshLibrary.add(new mesh::Triangle());
-  sceneIDs.rectangleMesh = ctx.meshLibrary.add(new mesh::Rectangle());
-  sceneIDs.spriteMesh1 = ctx.meshLibrary.add(
-      new mesh::Sprite(texture1, mesh::TextureRegion{0, 0, 76, 100}));
-  sceneIDs.spriteMesh2 = ctx.meshLibrary.add(
-      new mesh::Sprite(texture1, mesh::TextureRegion{32, 0, 64, 28}));
+  // Add entities
+  myScene.spaceship1 = {{0, 0, 0},
+                        {1, 1, 1},
+                        ctx.meshLibrary.add(new mesh::Sprite(
+                            {1024, 1024}, mesh::TextureRegion{200, 500, 200, 200})),
+                        myScene.textures.sprites};
+
+  myScene.starfield = {
+      ctx.meshLibrary.add(new mesh::Sprite(
+          {2048, 2048}, mesh::TextureRegion{0, 0, 2048, 2048})),
+      myScene.textures.starfield};
 
   initialized = true;
   dank::console::log("Scene initialized");
@@ -48,7 +68,7 @@ void Scene::update(FrameContext &ctx) {
     init(ctx);
   }
 
-  camera.mode = ProjectionMode::Perspective;
+  camera.mode = ProjectionMode::Orthographic;
   camera.pos = glm::vec3(0.0f, 0.0f, 10.0f);
   // camera.scale = 200.0f;
   camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -56,32 +76,17 @@ void Scene::update(FrameContext &ctx) {
 
   ctx.draw.clear();
 
-  glm::mat4 model =
-      glm::translate(glm::mat4(1.0f), glm::vec3(-2.0f, 1.0f, 0.0f));
-
-  auto entity1 = ctx.draw.create();
-  ctx.draw.emplace<draw::Mesh>(entity1, draw::Mesh{model, glm::vec4(1, 0, 0, 1),
-                                                   sceneIDs.triangleMesh,
-                                                   sceneIDs.debugTexture1});
-
-  auto entity2 = ctx.draw.create();
+  auto spaceship1 = ctx.draw.create();
   ctx.draw.emplace<draw::Mesh>(
-      entity2, draw::Mesh{glm::mat4(1.0f), glm::vec4(0, 1, 0, 1),
-                          sceneIDs.rectangleMesh, sceneIDs.debugTexture2});
+      spaceship1, draw::Mesh{glm::scale(glm::translate(glm::mat4(1.0f),
+                                                       myScene.spaceship1.pos),
+                                        myScene.spaceship1.scale),
+                             glm::vec4(1, 1, 1, 1), myScene.spaceship1.meshId,
+                             myScene.spaceship1.textureId});
 
-  auto sprite1 = ctx.draw.create();
+  auto starfield = ctx.draw.create();
   ctx.draw.emplace<draw::Mesh>(
-      sprite1,
-      draw::Mesh{glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, -1.0f, 0.0f)), {0.1f, 0.1f, 0.1f}),
-                 glm::vec4(0, 0, 1, 1), sceneIDs.spriteMesh1,
-                 sceneIDs.debugTexture1});
-
-  auto sprite2 = ctx.draw.create();
-  ctx.draw.emplace<draw::Mesh>(
-      sprite2,
-      draw::Mesh{glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, 0.0f, 1.0f)), {0.1f, 0.1f, 0.1f}),
-                 glm::vec4(1, 0, 1, 1), sceneIDs.spriteMesh2,
-                 sceneIDs.debugTexture1});
-
+      starfield,
+      draw::Mesh{glm::mat4(1.0f), glm::vec4(1, 1, 1, 1),
+                 myScene.starfield.meshId, myScene.starfield.textureId});
 }
-

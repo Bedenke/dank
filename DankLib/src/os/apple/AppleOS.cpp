@@ -7,6 +7,7 @@
 #include "AppleOS.hpp"
 #include "modules/engine/Console.hpp"
 #include "modules/engine/Engine.hpp"
+#include "modules/os/OS.hpp"
 #include "os/apple/renderer/AppleRenderer.hpp"
 
 using namespace dank;
@@ -14,11 +15,13 @@ using namespace dank;
 Engine *engine;
 apple::AppleRenderer *renderer;
 bool viewResized = false;
+dank::OS *dank::os = nullptr;
 
-void apple::onStart() {
+void apple::onStart(void *os) {
+  console::log("[AppleOS] starting ");
+  dank::os = (OS *)os;
   engine = new Engine();
   renderer = new apple::AppleRenderer();
-  console::log("[AppleOS] starting");
 }
 
 void apple::onStop() {
@@ -28,9 +31,7 @@ void apple::onStop() {
 }
 
 void apple::onHotReload() {
-  engine = new Engine();
-  renderer = new apple::AppleRenderer();
-  console::log("[AppleOS] hot reload");
+  console::log("[AppleOS] hot reloaded!");
 }
 
 void apple::onDraw(MetalView *view) {

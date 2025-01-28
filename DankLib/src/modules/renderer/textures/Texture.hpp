@@ -5,13 +5,10 @@
 namespace dank {
 namespace texture {
 
-struct TextureMetaData {
-  uint32_t channels;
+struct TextureData {
   uint32_t width;
   uint32_t height;
-};
-
-struct TextureData : TextureMetaData {
+  uint32_t channels;
   std::vector<uint8_t> data{};
 };
 
@@ -20,7 +17,6 @@ enum TextureType { Color };
 class Texture {
 public:
   virtual TextureType getType() = 0;
-  virtual void getMetaData(TextureMetaData &output) = 0;
   virtual void getData(TextureData &output) = 0;
   virtual ~Texture() = default;
 };

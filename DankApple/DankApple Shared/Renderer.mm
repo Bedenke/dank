@@ -8,7 +8,36 @@
 #import "Renderer.h"
 #import "AppleOS.hpp"
 #import "Metal.hpp"
+#import "OS.hpp"
 #include <dlfcn.h>
+
+
+class AppleOS : public dank::OS {
+public:
+    void getDataFromURI(dank::URI &uri, dank::ResourceData &output) override {
+        NSString *protocol = [NSString stringWithCString:uri.protocol.c_str()  encoding:NSUTF8StringEncoding];
+        assert([protocol isEqualToString:@"file"]);
+        
+        NSString *host = [NSString stringWithCString:uri.host.c_str()  encoding:NSUTF8StringEncoding];
+        NSString *path = [NSString stringWithCString:uri.path.c_str()  encoding:NSUTF8StringEncoding];
+        NSString *filePath = [NSString stringWithFormat:@"%@/%@", host, path ];
+        if([[NSFileManager defaultManager] fileExistsAtPath:filePath])
+        {
+            NSData *data = [[NSFileManager defaultManager] contentsAtPath:filePath];
+            output.size = [data length];
+            output.data = malloc(output.size);
+            memcpy(output.data, [data bytes], output.size);
+        }
+        else
+        {
+            NSLog(@"File not exits: %@", filePath);
+            output.size = 0;
+            output.data = nullptr;
+        }
+    }
+};
+
+AppleOS *appleOS = new AppleOS();
 
 @implementation Renderer
 {
@@ -26,6 +55,7 @@
     dank::apple::OnHotReloadFunctionType onHotReload;
     dank::apple::OnDrawFunctionType onDraw;
     dank::apple::OnResizeFunctionType onResize;
+    
 }
 
 -(NSString*)findDynamicFile:(nonnull NSString *)sourcePath
@@ -72,7 +102,7 @@
     
     if(dankLibHandle) {
         onStart = (dank::apple::OnStartFunctionType)dlsym(dankLibHandle, "onStart");
-        onStop = (dank::apple::OnStartFunctionType)dlsym(dankLibHandle, "onStop");
+        onStop = (dank::apple::OnStopFunctionType)dlsym(dankLibHandle, "onStop");
         onHotReload = (dank::apple::OnHotReloadFunctionType)dlsym(dankLibHandle, "onHotReload");
         onDraw = (dank::apple::OnDrawFunctionType)dlsym(dankLibHandle, "onDraw");
         onResize = (dank::apple::OnResizeFunctionType)dlsym(dankLibHandle, "onResize");
@@ -91,19 +121,19 @@
 {
     
     NSURL *libraryURL = [NSURL URLWithString:sourceFile];
-//    NSURL *libraryURL = [[NSBundle mainBundle] URLForResource:libraryName
-//                                                withExtension:@"metallib"];
-
-
+    //    NSURL *libraryURL = [[NSBundle mainBundle] URLForResource:libraryName
+    //                                                withExtension:@"metallib"];
+    
+    
     if (libraryURL == nil) {
         NSLog(@"Couldn't find library file: %@", libraryURL);
         return false;
     }
     
-   
+    
     NSError *libraryError = nil;
     shaderLibrary = [device newLibraryWithURL:libraryURL
-                                                  error:&libraryError];
+                                        error:&libraryError];
     if (shaderLibrary == nil) {
         NSLog(@"Couldn't create library: %@", libraryURL);
         if (libraryError.localizedDescription != nil) {
@@ -111,31 +141,31 @@
         }
         return false;
     }
-
+    
     NSLog(@"Shader library file: %@", libraryURL);
-
+    
     return true;
 }
 
 
 -(bool)updateDylibSource {
-
+    
     NSString *sourcePath = @"./DankLib/zig-out/lib";
-
+    
     NSString* dylib = [self findDynamicFile:sourcePath withExtension:@"dylib"];
     if (dylib == nil) return false;
     
     if ([dylib isEqualTo:currentDylib]) return false;
     
     currentDylib = [NSString stringWithString:dylib];
-
+    
     return true;
 }
 
 -(bool)updateMetalLibSource {
-
+    
     NSString *sourcePath = @"./DankLib/zig-out/lib";
-
+    
     NSString* metalLib = [self findDynamicFile:sourcePath withExtension:@"metallib"];
     if (metalLib == nil) return false;
     
@@ -152,7 +182,7 @@
         if (onStop != nullptr) onStop();
         
         if (![self loadDynamicLibrary:currentDylib]) return false;
-
+        
         [self updateMetalLibSource];
         if (![self loadShaderLibrary:view.device sourceFile:currentMetalLib]) return false;
         
@@ -170,13 +200,13 @@
     view.device = MTLCreateSystemDefaultDevice();
     
     if ([self hotReload:view]) {
-        [view setColorPixelFormat:MTLPixelFormatBGRA8Unorm_sRGB];
+        [view setColorPixelFormat:MTLPixelFormatRGBA8Unorm];
         
         [self mtkView:view drawableSizeWillChange:view.drawableSize];
-
+        
         resized = true;
-        onStart();
-
+        onStart(appleOS);
+        
         return self;
     }
     
@@ -189,14 +219,15 @@
     NSTimeInterval deltaTime = [currentTime timeIntervalSinceDate:lastUpdateTime];
     lastUpdateTime = currentTime;
     hotReloadTimer -= deltaTime;
-
+    
     bool reloaded = false;
     if (hotReloadTimer < 0) {
         hotReloadTimer = 1;
         reloaded = [self hotReload:view];
     }
-
+    
     if (reloaded) {
+        onStart(appleOS);
         onHotReload();
         resized = true;
     }
@@ -208,9 +239,9 @@
     metalView.currentRenderPassDescriptor = (__bridge MTL::RenderPassDescriptor *) view.currentRenderPassDescriptor;
     metalView.viewWidth = [view drawableSize].width;
     metalView.viewHeight = [view drawableSize].height;
-        
+    
     onDraw(&metalView);
-        
+    
     if (resized) {
         resized = false;
         onResize(metalView.viewWidth, metalView.viewHeight);
@@ -221,4 +252,5 @@
 {
     onResize(size.width, size.height);
 }
+
 @end

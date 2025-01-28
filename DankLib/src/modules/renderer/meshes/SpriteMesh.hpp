@@ -7,6 +7,11 @@ namespace dank {
 
 namespace mesh {
 
+struct TextureSize {
+  uint32_t width;
+  uint32_t height;
+};
+
 struct TextureRegion {
   float x;
   float y;
@@ -17,21 +22,18 @@ struct TextureRegion {
 
 class Sprite : public Mesh {
 private:
-  texture::Texture *texture;
+  TextureSize textureSize;
   TextureRegion region;
 
 public:
-  Sprite(texture::Texture *texture, TextureRegion region)
-      : Mesh(), texture(texture), region(region) {}
+  Sprite(TextureSize textureSize, TextureRegion region)
+      : Mesh(), textureSize(textureSize), region(region) {}
 
   void getData(MeshData &output) override {
-    texture::TextureMetaData textureMetaData;
-    texture->getMetaData(textureMetaData);
-    
-    float x0 = region.x / textureMetaData.width;
-    float y0 = region.y / textureMetaData.height;
-    float x1 = x0 + (region.width / textureMetaData.width);
-    float y1 = y0 + (region.height / textureMetaData.height);
+    float x0 = region.x / textureSize.width;
+    float y0 = region.y / textureSize.height;
+    float x1 = x0 + (region.width / textureSize.width);
+    float y1 = y0 + (region.height / textureSize.height);
     float nx = region.width * region.scale / 2.0f;
     float ny = region.height * region.scale / 2.0f;
 

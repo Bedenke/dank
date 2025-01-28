@@ -33,6 +33,8 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(b.path("src/"));
     lib.installHeader(b.path("src/os/apple/AppleOS.hpp"), "AppleOS.hpp");
     lib.installHeader(b.path("src/os/apple/Metal.hpp"), "Metal.hpp");
+    lib.installHeader(b.path("src/modules/os/OS.hpp"), "OS.hpp");
+    lib.installHeader(b.path("src/modules/os/URI.hpp"), "URI.hpp");
     lib.linkLibCpp();
     lib.linkFramework("Foundation");
     lib.linkFramework("Metal");

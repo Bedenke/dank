@@ -36,9 +36,9 @@ void apple::AppleRenderer::init() {
 
   // Mesh Instances Buffer
   {
-    meshInstanceBuffer =
-        view->device->newBuffer(sizeof(instance::InstanceData) * instancePageSize,
-                                MTL::ResourceStorageModeShared);
+    meshInstanceBuffer = view->device->newBuffer(
+        sizeof(instance::InstanceData) * instancePageSize,
+        MTL::ResourceStorageModeShared);
     meshInstanceBuffer->setLabel(NS::String::string(
         "MeshInstanceBuffer", NS::StringEncoding::UTF8StringEncoding));
   }
@@ -56,8 +56,18 @@ void apple::AppleRenderer::init() {
     pipelineDescriptor->setVertexFunction(vertexFunction);
     pipelineDescriptor->setFragmentFunction(fragmentFunction);
     pipelineDescriptor->setSupportIndirectCommandBuffers(true);
+    pipelineDescriptor->setAlphaToCoverageEnabled(false);
+    pipelineDescriptor->colorAttachments()->object(0)->setAlphaBlendOperation(
+        MTL::BlendOperationAdd);
+    pipelineDescriptor->colorAttachments()
+        ->object(0)
+        ->setSourceAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+    pipelineDescriptor->colorAttachments()
+        ->object(0)
+        ->setDestinationAlphaBlendFactor(MTL::BlendFactorDestinationAlpha);
+    pipelineDescriptor->colorAttachments()->object(0)->setBlendingEnabled(true);
     pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(
-        MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB);
+        MTL::PixelFormat::PixelFormatRGBA8Unorm);
 
     NS::Error *error;
     pipelineState =
@@ -158,15 +168,18 @@ void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
     textureDesc->setWidth(td.width);
     textureDesc->setHeight(td.height);
     if (desc.texture->getType() == texture::TextureType::Color) {
-      textureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
       textureDesc->setTextureType(MTL::TextureType2D);
+      textureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+    } else {
+      throw std::runtime_error("Unsupported texture type");
     }
     textureDesc->setStorageMode(MTL::StorageModeShared);
     textureDesc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
 
+    NS::UInteger bytesPerRow = td.width * td.channels;
     MTL::Texture *texture = view->device->newTexture(textureDesc);
     texture->replaceRegion(MTL::Region(0, 0, 0, td.width, td.height, 1), 0,
-                           td.data.data(), td.width * td.channels);
+                           td.data.data(), bytesPerRow);
     textureDesc->release();
 
     textures[desc.index] = texture;
@@ -216,7 +229,8 @@ void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
     const auto textureDescriptor = ctx.textureLibrary.get(mesh.textureId);
 
     instance::InstanceData *bufferData =
-        reinterpret_cast<instance::InstanceData *>(meshInstanceBuffer->contents());
+        reinterpret_cast<instance::InstanceData *>(
+            meshInstanceBuffer->contents());
     bufferData[meshInstanceCount].transform = mesh.transform;
     bufferData[meshInstanceCount].color = mesh.color;
     bufferData[meshInstanceCount].meshIndex = meshDescriptor->bufferIndex;

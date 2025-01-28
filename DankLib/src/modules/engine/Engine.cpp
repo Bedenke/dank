@@ -5,6 +5,9 @@
 #include "modules/renderer/textures/DebugTexture.hpp"
 #include <chrono>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "libs/stb/stb_image.h"
+
 using namespace dank;
 
 double Engine::getTimeInMilliseconds() const {
@@ -26,7 +29,7 @@ Engine::~Engine() {
 }
 
 void Engine::onViewResize(float viewWidth, float viewHeight) {
-    scene->camera.onViewResize(viewWidth, viewHeight);
+  scene->camera.onViewResize(viewWidth, viewHeight);
 }
 
 void Engine::update() {

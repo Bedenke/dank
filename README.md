@@ -1,11 +1,14 @@
 # Dank Game Engine project
 
 Up next:
-- [ ] Resources (load files)
+- [ ] Physics
+- [ ] Inputs
+- [ ] Interaction
 - [ ] Javascript
 - [ ] Scene management
 
 Done:
+- [x] Resources (load files)
 - [x] Sprite Mesh
 - [x] Instances + Indirect Draw Commands
 - [x] Camera

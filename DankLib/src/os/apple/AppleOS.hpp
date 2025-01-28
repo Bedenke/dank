@@ -16,13 +16,13 @@ namespace dank
             int viewHeight;
         };
 
-        extern "C" void onStart();
+        extern "C" void onStart(void *os);
         extern "C" void onStop();
         extern "C" void onHotReload();
         extern "C" void onDraw(MetalView *graphics);
         extern "C" void onResize(int width, int height);
 
-        typedef void (*OnStartFunctionType)();
+        typedef void (*OnStartFunctionType)(void *);
         typedef void (*OnStopFunctionType)();
         typedef void (*OnHotReloadFunctionType)();
         typedef void (*OnDrawFunctionType)(MetalView*);
