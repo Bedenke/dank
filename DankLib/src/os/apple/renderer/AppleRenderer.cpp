@@ -233,7 +233,7 @@ void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
             meshInstanceBuffer->contents());
     bufferData[meshInstanceCount].transform = mesh.transform;
     bufferData[meshInstanceCount].color = mesh.color;
-    bufferData[meshInstanceCount].meshIndex = meshDescriptor->bufferIndex;
+    bufferData[meshInstanceCount].bufferIndex = meshDescriptor->bufferIndex;
     bufferData[meshInstanceCount].textureIndex = textureDescriptor->index;
 
     MTL::IndirectRenderCommand *command =

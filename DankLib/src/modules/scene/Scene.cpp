@@ -33,6 +33,7 @@ struct SceneDescriptor {
   TextureIDs textures;
   Starfield starfield;
   Spaceship spaceship1;
+  Spaceship spaceship2;
 };
 
 SceneDescriptor myScene;
@@ -48,11 +49,19 @@ void Scene::init(FrameContext &ctx) {
       new texture::Texture2D(URI{"file://Demo/Starfield.png"}));
 
   // Add entities
-  myScene.spaceship1 = {{0, 0, 0},
-                        {1, 1, 1},
-                        ctx.meshLibrary.add(new mesh::Sprite(
-                            {1024, 1024}, mesh::TextureRegion{200, 500, 200, 200})),
-                        myScene.textures.sprites};
+  myScene.spaceship1 = {
+      {0, 0, 0},
+      {1, 1, 1},
+      ctx.meshLibrary.add(new mesh::Sprite(
+          {1024, 1024}, mesh::TextureRegion{200, 500, 200, 200})),
+      myScene.textures.sprites};
+
+  myScene.spaceship2 = {
+      {0, 0, 0},
+      {1, 1, 1},
+      ctx.meshLibrary.add(new mesh::Sprite(
+          {1024, 1024}, mesh::TextureRegion{400, 500, 200, 200})),
+      myScene.textures.sprites};
 
   myScene.starfield = {
       ctx.meshLibrary.add(new mesh::Sprite(
@@ -76,6 +85,8 @@ void Scene::update(FrameContext &ctx) {
 
   ctx.draw.clear();
 
+  myScene.spaceship1.pos = glm::vec3(100, 100, 0);
+
   auto spaceship1 = ctx.draw.create();
   ctx.draw.emplace<draw::Mesh>(
       spaceship1, draw::Mesh{glm::scale(glm::translate(glm::mat4(1.0f),
@@ -83,6 +94,15 @@ void Scene::update(FrameContext &ctx) {
                                         myScene.spaceship1.scale),
                              glm::vec4(1, 1, 1, 1), myScene.spaceship1.meshId,
                              myScene.spaceship1.textureId});
+
+  myScene.spaceship2.pos = glm::vec3(-100, -100, 0);
+  auto spaceship2 = ctx.draw.create();
+  ctx.draw.emplace<draw::Mesh>(
+      spaceship2, draw::Mesh{glm::scale(glm::translate(glm::mat4(1.0f),
+                                                       myScene.spaceship2.pos),
+                                        myScene.spaceship2.scale),
+                             glm::vec4(1, 1, 1, 1), myScene.spaceship2.meshId,
+                             myScene.spaceship2.textureId});
 
   auto starfield = ctx.draw.create();
   ctx.draw.emplace<draw::Mesh>(
