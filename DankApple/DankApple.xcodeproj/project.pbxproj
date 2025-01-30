@@ -6,7 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A097BC002D4C03AD00A58E10 /* libDankApple.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A097BBFF2D4C03AD00A58E10 /* libDankApple.a */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		A097BBFF2D4C03AD00A58E10 /* libDankApple.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libDankApple.a; path = "../DankLib/zig-out/lib/libDankApple.a"; sourceTree = "<group>"; };
 		A0A11FC82D304DDF0015ED0E /* DankApple.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DankApple.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0A11FDD2D304DDF0015ED0E /* DankApple.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DankApple.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -16,7 +21,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Assets.xcassets,
-				Renderer.mm,
+				GameDankView.mm,
 			);
 			target = A0A11FC72D304DDF0015ED0E /* DankApple iOS */;
 		};
@@ -24,7 +29,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Assets.xcassets,
-				Renderer.mm,
+				GameDankView.mm,
 			);
 			target = A0A11FDC2D304DDF0015ED0E /* DankApple macOS */;
 		};
@@ -64,18 +69,28 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A097BC002D4C03AD00A58E10 /* libDankApple.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A097BBFE2D4C03AD00A58E10 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A097BBFF2D4C03AD00A58E10 /* libDankApple.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A0A11FB92D304DDE0015ED0E = {
 			isa = PBXGroup;
 			children = (
 				A0A11FBE2D304DDE0015ED0E /* DankApple Shared */,
 				A0A11FCA2D304DDF0015ED0E /* DankApple iOS */,
 				A0A11FDE2D304DDF0015ED0E /* DankApple macOS */,
+				A097BBFE2D4C03AD00A58E10 /* Frameworks */,
 				A0A11FC92D304DDF0015ED0E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -287,6 +302,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "../DankLib/zig-out/lib";
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bedenke.DankApple;
@@ -316,6 +332,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "../DankLib/zig-out/lib";
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bedenke.DankApple;

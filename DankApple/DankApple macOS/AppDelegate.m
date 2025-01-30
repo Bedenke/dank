@@ -6,6 +6,9 @@
 //
 
 #import "AppDelegate.h"
+#import "DankView.h"
+
+DankView *dv;
 
 @interface AppDelegate ()
 

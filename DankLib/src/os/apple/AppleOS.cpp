@@ -1,4 +1,3 @@
-#include "modules/renderer/Renderer.hpp"
 #define NS_PRIVATE_IMPLEMENTATION
 #define CA_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
@@ -30,9 +29,7 @@ void apple::onStop() {
   console::log("[AppleOS] stopped");
 }
 
-void apple::onHotReload() {
-  console::log("[AppleOS] hot reloaded!");
-}
+void apple::onHotReload() { console::log("[AppleOS] hot reloaded!"); }
 
 void apple::onDraw(MetalView *view) {
   if (viewResized) {
@@ -50,3 +47,49 @@ void apple::onDraw(MetalView *view) {
 }
 
 void apple::onResize(int width, int height) { viewResized = true; }
+
+void apple::onInputEvent(InputEvent &event) {
+  switch (event.type) {
+  case InputEventType::KeyDown:
+    engine->ctx.input.handleKeyDown(event.key);
+    break;
+  case InputEventType::KeyUp:
+    engine->ctx.input.handleKeyUp(event.key);
+    break;
+  case InputEventType::KeyTyped:
+    engine->ctx.input.handleKeyTyped(event.key, event.character);
+    break;
+  case InputEventType::MouseDrag: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    engine->ctx.input.handleTouchMove(touchData);
+  } break;
+  case InputEventType::MouseMove: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    engine->ctx.input.handleTouchMove(touchData);
+  } break;
+  case InputEventType::MouseDown: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    engine->ctx.input.handleTouchDown(touchData);
+  } break;
+  case InputEventType::MouseUp: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    engine->ctx.input.handleTouchUp(touchData);
+  } break;
+  case InputEventType::MouseScroll: {
+    engine->ctx.input.handleWheel(event.wheelDelta);
+
+  } break;
+  }
+}

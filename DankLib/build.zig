@@ -31,14 +31,11 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     lib.addIncludePath(b.path("src/"));
-    lib.installHeader(b.path("src/os/apple/AppleOS.hpp"), "AppleOS.hpp");
-    lib.installHeader(b.path("src/os/apple/Metal.hpp"), "Metal.hpp");
-    lib.installHeader(b.path("src/modules/os/OS.hpp"), "OS.hpp");
-    lib.installHeader(b.path("src/modules/os/URI.hpp"), "URI.hpp");
+    lib.installHeader(b.path("src/os/apple/DankView.h"), "DankView.h");
     lib.linkLibCpp();
     lib.linkFramework("Foundation");
     lib.linkFramework("Metal");
-    //lib.linkSystemLibrary("objc", .{});
+
     lib.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
@@ -46,11 +43,33 @@ pub fn build(b: *std.Build) void {
             "modules/engine/Engine.cpp",
             "modules/scene/Scene.cpp",
             "modules/scene/Camera.cpp",
+            "modules/input/Input.cpp",
             "os/apple/AppleOS.cpp",
             "os/apple/renderer/AppleRenderer.cpp",
         },
         .flags = &cflags,
     });
+
+    const objCFlags = [_][]const u8{ "-std=c++17", "-fno-sanitize=undefined", "-fobjc-arc" };
+
+    const libApple = b.addStaticLibrary(.{
+        .name = "DankApple",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    libApple.addIncludePath(b.path("src/"));
+    libApple.addCSourceFiles(.{
+        .root = b.path("src"),
+        .files = &.{
+            "os/apple/DankView.mm",
+        },
+        .flags = &objCFlags,
+    });
+    libApple.linkLibCpp();
+    libApple.linkFramework("Foundation");
+    libApple.linkFramework("Metal");
+    libApple.linkFramework("MetalKit");
 
     const HelperFunctions = struct {
         fn clearLibDir(_: *std.Build.Step, _: std.Progress.Node) anyerror!void {
@@ -124,6 +143,7 @@ pub fn build(b: *std.Build) void {
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
     b.installArtifact(lib);
+    b.installArtifact(libApple);
 
     zcc.createStep(b, "cdb", targets.toOwnedSlice() catch @panic("OOM"));
 }

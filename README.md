@@ -1,11 +1,11 @@
 # Dank Game Engine project
 
 Up next:
-- [ ] Physics
-- [ ] Inputs
+- [x] Inputs
 - [ ] Interaction
-- [ ] Javascript
 - [ ] Scene management
+- [ ] Physics
+- [ ] Javascript
 
 Done:
 - [x] Resources (load files)

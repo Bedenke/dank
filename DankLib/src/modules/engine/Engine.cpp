@@ -49,11 +49,12 @@ void Engine::update() {
     console::log("[dank] fps: %d | %.2fms", ctx.framesPerSecond, deltaTime);
   }
 
-  // Update context
+  // Update time
   ctx.deltaTime = deltaTime;
   ctx.absoluteTime += deltaTime;
   ctx.absoluteFrame++;
 
-  // Update scene
+  ctx.input.update(deltaTime);
+  
   scene->update(ctx);
 }

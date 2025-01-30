@@ -1,6 +1,7 @@
 #include "Scene.hpp"
 #include "libs/glm/fwd.hpp"
 #include "modules/engine/Console.hpp"
+#include "modules/input/Input.hpp"
 #include "modules/renderer/Renderer.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
 #include "modules/renderer/meshes/RectangleMesh.hpp"
@@ -77,6 +78,32 @@ void Scene::update(FrameContext &ctx) {
     init(ctx);
   }
 
+  if (ctx.input.hasInputState(InputKey::KEY_UP, InputKeyState::IKS_DOWN)) {
+    myScene.spaceship1.pos.y += 10;
+  } else if (ctx.input.hasInputState(InputKey::KEY_DOWN,
+                                     InputKeyState::IKS_DOWN)) {
+    myScene.spaceship1.pos.y -= 10;
+  }
+
+  TouchState ts1, ts2;
+  ctx.input.getTouchState(ts1, TouchButton::TB_LEFT);
+  ctx.input.getTouchState(ts2, TouchButton::TB_RIGHT);
+  if (ts1.hasAction(TouchActions::TA_TOUCH)) {
+    dank::console::log("TOUCH %.1f:%.1f b=%d", ts1.x, ts1.y, ts1.button);
+  }
+  if (ts2.hasAction(TouchActions::TA_TOUCH)) {
+    dank::console::log("TOUCH %.1f:%.1f b=%d", ts2.x, ts2.y, ts2.button);
+  }
+  if (ts1.hasAction(TouchActions::TA_TOUCHED)) {
+    dank::console::log("TOUCHED");
+  }
+  if (ts1.hasAction(TouchActions::TA_DRAG)) {
+    dank::console::log("TA_DRAG");
+  }
+  if (ts1.hasAction(TouchActions::TA_HOVER)) {
+    dank::console::log("TA_HOVER");
+  }
+
   camera.mode = ProjectionMode::Orthographic;
   camera.pos = glm::vec3(0.0f, 0.0f, 10.0f);
   // camera.scale = 200.0f;
@@ -84,8 +111,6 @@ void Scene::update(FrameContext &ctx) {
   camera.update(ctx);
 
   ctx.draw.clear();
-
-  myScene.spaceship1.pos = glm::vec3(100, 100, 0);
 
   auto spaceship1 = ctx.draw.create();
   ctx.draw.emplace<draw::Mesh>(
