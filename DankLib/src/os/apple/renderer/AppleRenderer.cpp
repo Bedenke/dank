@@ -1,10 +1,12 @@
 #include "AppleRenderer.hpp"
+#include "modules/Foundation.hpp"
 #include "modules/engine/Console.hpp"
 #include "modules/renderer/Renderer.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
 #include "modules/renderer/textures/Texture.hpp"
 #include "modules/scene/Scene.hpp"
 #include "os/apple/Metal.hpp"
+#include <cstddef>
 
 using namespace dank;
 
@@ -56,18 +58,21 @@ void apple::AppleRenderer::init() {
     pipelineDescriptor->setVertexFunction(vertexFunction);
     pipelineDescriptor->setFragmentFunction(fragmentFunction);
     pipelineDescriptor->setSupportIndirectCommandBuffers(true);
-    pipelineDescriptor->setAlphaToCoverageEnabled(false);
-    pipelineDescriptor->colorAttachments()->object(0)->setAlphaBlendOperation(
-        MTL::BlendOperationAdd);
-    pipelineDescriptor->colorAttachments()
-        ->object(0)
-        ->setSourceAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
-    pipelineDescriptor->colorAttachments()
-        ->object(0)
-        ->setDestinationAlphaBlendFactor(MTL::BlendFactorDestinationAlpha);
-    pipelineDescriptor->colorAttachments()->object(0)->setBlendingEnabled(true);
     pipelineDescriptor->colorAttachments()->object(0)->setPixelFormat(
         MTL::PixelFormat::PixelFormatRGBA8Unorm);
+
+    // Enable blending
+    MTL::RenderPipelineColorAttachmentDescriptor *colorAttachment =
+        pipelineDescriptor->colorAttachments()->object(0);
+    colorAttachment->setBlendingEnabled(true);
+    colorAttachment->setRgbBlendOperation(MTL::BlendOperationAdd);
+    colorAttachment->setAlphaBlendOperation(MTL::BlendOperationAdd);
+    colorAttachment->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+    colorAttachment->setSourceAlphaBlendFactor(MTL::BlendFactorSourceAlpha);
+    colorAttachment->setDestinationRGBBlendFactor(
+        MTL::BlendFactorOneMinusSourceAlpha);
+    colorAttachment->setDestinationAlphaBlendFactor(
+        MTL::BlendFactorOneMinusSourceAlpha);
 
     NS::Error *error;
     pipelineState =
@@ -91,12 +96,22 @@ void apple::AppleRenderer::init() {
     cameraUBOBuffer->setLabel(NS::String::string(
         "CameraUBO", NS::StringEncoding::UTF8StringEncoding));
   }
+
+  {
+    // Create a buffer to hold the encoded arguments
+    fragmentArgBuffer = view->device->newBuffer(
+        fragmentArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
+    fragmentArgBuffer->setLabel(NS::String::string(
+        "TextureArgBuffer", NS::StringEncoding::UTF8StringEncoding));
+    // Encode the arguments into the buffer
+    fragmentArgEncoder->setArgumentBuffer(fragmentArgBuffer, 0);
+  }
 }
 
 void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
-  if (meshesLastModified == ctx.meshLibrary.lastModified)
+  if (meshLibraryLastModified == ctx.meshLibrary.lastModified)
     return;
-  meshesLastModified = ctx.meshLibrary.lastModified;
+  meshLibraryLastModified = ctx.meshLibrary.lastModified;
 
   if (meshVertexBuffer != nullptr) {
     meshVertexBuffer->release();
@@ -138,56 +153,84 @@ void apple::AppleRenderer::prepareMeshes(dank::FrameContext &ctx) {
 }
 
 void apple::AppleRenderer::prepareTextures(dank::FrameContext &ctx) {
-  if (texturesLastModified == ctx.textureLibrary.lastModified)
-    return;
+  uint32_t activeTextureCount = 0;
 
-  texturesLastModified = ctx.textureLibrary.lastModified;
+  for (const auto &entry : ctx.textureLibrary.textures) {
+    auto *texture = entry.second;
 
-  textures.clear();
-
-  if (fragmentArgBuffer == nullptr) {
-    // Create a buffer to hold the encoded arguments
-    fragmentArgBuffer = view->device->newBuffer(
-        fragmentArgEncoder->encodedLength(), MTL::ResourceStorageModeShared);
-    fragmentArgBuffer->setLabel(NS::String::string(
-        "TextureArgBuffer", NS::StringEncoding::UTF8StringEncoding));
-  }
-
-  // Encode the arguments into the buffer
-  fragmentArgEncoder->setArgumentBuffer(fragmentArgBuffer, 0);
-
-  for (const auto &entry : ctx.textureLibrary.descriptors) {
-
-    const texture::TextureDescriptor &desc = entry.second;
+    auto &state = textureState[entry.first];
 
     texture::TextureData td{};
-    desc.texture->getData(td);
+    texture->fetchData(td);
 
-    MTL::TextureDescriptor *textureDesc =
-        MTL::TextureDescriptor::alloc()->init();
-    textureDesc->setWidth(td.width);
-    textureDesc->setHeight(td.height);
-    if (desc.texture->getType() == texture::TextureType::Color) {
-      textureDesc->setTextureType(MTL::TextureType2D);
-      textureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
-    } else {
-      throw std::runtime_error("Unsupported texture type");
+    if (td.state == ResourceState::Idle || td.state == ResourceState::Invalid) {
+
+      state.active = false;
+      if (state.mtlTexture != nullptr) {
+        state.mtlTexture->release();
+        state.mtlTexture = nullptr;
+      }
+
+      texture->releaseData(td);
+      continue;
     }
-    textureDesc->setStorageMode(MTL::StorageModeShared);
-    textureDesc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
+
+    if (td.state == ResourceState::Loading) {
+      state.active = false;
+      continue;
+    }
+
+    if (state.lastModified == td.lastModified) {
+      activeTextureCount++;
+      continue;
+    }
+
+    state.lastModified = td.lastModified;
+
+    if (state.mtlTexture == nullptr) {
+
+      MTL::TextureDescriptor *textureDesc =
+          MTL::TextureDescriptor::alloc()->init();
+      textureDesc->setWidth(td.width);
+      textureDesc->setHeight(td.height);
+
+      // Set pixel format
+      switch (td.format) {
+      case dank::PixelFormat::BGRA32:
+        textureDesc->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
+        break;
+      case dank::PixelFormat::RGBA8Unorm:
+        textureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+        break;
+      }
+      textureDesc->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+
+      if (texture->getType() == texture::TextureType::Color) {
+        textureDesc->setTextureType(MTL::TextureType2D);
+      } else {
+        throw std::runtime_error("Unsupported texture type");
+      }
+      textureDesc->setStorageMode(MTL::StorageModeShared);
+      textureDesc->setUsage(MTL::ResourceUsageSample | MTL::ResourceUsageRead);
+
+      state.mtlTexture = view->device->newTexture(textureDesc);
+      state.index = activeTextureCount;
+      textureDesc->release();
+
+      fragmentArgEncoder->setTexture(state.mtlTexture, state.index);
+
+      dank::console::log("[AppleRenderer] added new texture: %d",
+                         activeTextureCount);
+    }
 
     NS::UInteger bytesPerRow = td.width * td.channels;
-    MTL::Texture *texture = view->device->newTexture(textureDesc);
-    texture->replaceRegion(MTL::Region(0, 0, 0, td.width, td.height, 1), 0,
-                           td.data.data(), bytesPerRow);
-    textureDesc->release();
+    state.mtlTexture->replaceRegion(
+        MTL::Region(0, 0, 0, td.width, td.height, 1), 0, td.data, bytesPerRow);
+    texture->releaseData(td);
 
-    textures[desc.index] = texture;
-
-    fragmentArgEncoder->setTexture(texture, desc.index);
+    state.active = true;
+    activeTextureCount++;
   }
-
-  dank::console::log("[AppleRenderer] textures updated: %d", textures.size());
 }
 
 void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
@@ -218,15 +261,21 @@ void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
   // Set the argument buffer in the render command encoder
   renderEncoder->setFragmentBuffer(fragmentArgBuffer, 0, 0);
 
-  for (const auto &entry : textures) {
-    renderEncoder->useResource(entry.second, MTL::ResourceUsageSample);
+  for (const auto &entry : textureState) {
+    if (entry.second.active) {
+      renderEncoder->useResource(entry.second.mtlTexture,
+                                 MTL::ResourceUsageSample);
+    }
   }
 
   uint32_t meshInstanceCount = 0;
   auto view = ctx.draw.view<draw::Mesh>();
   for (auto [entity, mesh] : view.each()) {
+    const auto textureDescriptor = textureState[mesh.textureId];
+    if (!textureDescriptor.active)
+      continue;
+
     const auto meshDescriptor = ctx.meshLibrary.get(mesh.meshId);
-    const auto textureDescriptor = ctx.textureLibrary.get(mesh.textureId);
 
     instance::InstanceData *bufferData =
         reinterpret_cast<instance::InstanceData *>(
@@ -234,7 +283,7 @@ void apple::AppleRenderer::render(FrameContext &ctx, Scene *scene) {
     bufferData[meshInstanceCount].transform = mesh.transform;
     bufferData[meshInstanceCount].color = mesh.color;
     bufferData[meshInstanceCount].bufferIndex = meshDescriptor->bufferIndex;
-    bufferData[meshInstanceCount].textureIndex = textureDescriptor->index;
+    bufferData[meshInstanceCount].textureIndex = textureDescriptor.index;
 
     MTL::IndirectRenderCommand *command =
         indirectCommandBuffer->indirectRenderCommand(meshInstanceCount);
@@ -301,10 +350,10 @@ void apple::AppleRenderer::release() {
     indirectCommandBuffer = nullptr;
   }
 
-  for (auto &entry : textures) {
-    entry.second->release();
+  for (auto &entry : textureState) {
+    entry.second.mtlTexture->release();
   }
-  textures.clear();
+  textureState.clear();
 
   if (pipelineState != nullptr) {
     pipelineState->release();

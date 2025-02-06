@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace dank {
 enum class InputKey : uint32_t {

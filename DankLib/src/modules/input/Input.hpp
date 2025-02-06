@@ -4,11 +4,7 @@
 
 namespace dank {
 
-enum TouchButton : int {
-  TB_LEFT = 0,
-  TB_RIGHT = 1,
-  TB_MIDDLE = 2
-};
+enum TouchButton : int { TB_LEFT = 0, TB_RIGHT = 1, TB_MIDDLE = 2 };
 
 struct TouchData {
   float x;
@@ -143,4 +139,5 @@ public:
     return (states[key] & f) == f;
   }
 };
+extern Input input;
 } // namespace dank

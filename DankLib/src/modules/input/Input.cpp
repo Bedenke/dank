@@ -3,6 +3,8 @@
 
 using namespace dank;
 
+dank::Input dank::input;
+
 bool Touch::update(const float dt, const InputOptions &input) {
   actions = TouchActions::TA_NONE;
   if (touching) {

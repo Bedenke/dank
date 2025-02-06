@@ -8,10 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		A097BC002D4C03AD00A58E10 /* libDankApple.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A097BBFF2D4C03AD00A58E10 /* libDankApple.a */; };
+		A097BC152D51A35D00A58E10 /* ScreenCaptureKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A097BC142D51A35C00A58E10 /* ScreenCaptureKit.framework */; };
+		A097BC172D51A36C00A58E10 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A097BC162D51A36C00A58E10 /* CoreMedia.framework */; };
+		A097BC192D522CE200A58E10 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A097BC182D522CE200A58E10 /* AVFoundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A097BBFF2D4C03AD00A58E10 /* libDankApple.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libDankApple.a; path = "../DankLib/zig-out/lib/libDankApple.a"; sourceTree = "<group>"; };
+		A097BC0F2D51A2C500A58E10 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
+		A097BC122D51A34200A58E10 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		A097BC142D51A35C00A58E10 /* ScreenCaptureKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScreenCaptureKit.framework; path = System/Library/Frameworks/ScreenCaptureKit.framework; sourceTree = SDKROOT; };
+		A097BC162D51A36C00A58E10 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
+		A097BC182D522CE200A58E10 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		A0A11FC82D304DDF0015ED0E /* DankApple.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DankApple.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0A11FDD2D304DDF0015ED0E /* DankApple.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DankApple.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -69,6 +77,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A097BC192D522CE200A58E10 /* AVFoundation.framework in Frameworks */,
+				A097BC172D51A36C00A58E10 /* CoreMedia.framework in Frameworks */,
+				A097BC152D51A35D00A58E10 /* ScreenCaptureKit.framework in Frameworks */,
 				A097BC002D4C03AD00A58E10 /* libDankApple.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -79,6 +90,11 @@
 		A097BBFE2D4C03AD00A58E10 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A097BC182D522CE200A58E10 /* AVFoundation.framework */,
+				A097BC162D51A36C00A58E10 /* CoreMedia.framework */,
+				A097BC142D51A35C00A58E10 /* ScreenCaptureKit.framework */,
+				A097BC122D51A34200A58E10 /* CoreFoundation.framework */,
+				A097BC0F2D51A2C500A58E10 /* SceneKit.framework */,
 				A097BBFF2D4C03AD00A58E10 /* libDankApple.a */,
 			);
 			name = Frameworks;
@@ -297,6 +313,7 @@
 				HEADER_SEARCH_PATHS = "../DankLib/zig-out/include";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record mic";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -327,6 +344,7 @@
 				HEADER_SEARCH_PATHS = "../DankLib/zig-out/include";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Record mic";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

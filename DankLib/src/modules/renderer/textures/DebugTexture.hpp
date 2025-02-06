@@ -1,15 +1,22 @@
 #pragma once
 
+#include "modules/Foundation.hpp"
 #include "modules/renderer/textures/Texture.hpp"
+#include <cstdint>
+#include <cstdlib>
 
 namespace dank {
 namespace texture {
 class DebugTexture : public Texture {
 public:
   static const uint32_t ID = 1;
-  TextureType getType() { return TextureType::Color; }
+  TextureType getType() override { return TextureType::Color; }
 
-  void getData(TextureData &output) {
+  void fetchData(TextureData &output) override {
+    if (output.lastModified > 0) {
+      output.state = ResourceState::Ready;
+      return;
+    }
 
     const uint32_t tw = 128;
     const uint32_t th = 128;
@@ -17,8 +24,11 @@ public:
     output.width = tw;
     output.height = th;
     output.channels = 4;
+    output.format = PixelFormat::RGBA8Unorm;
+    output.lastModified++;
+    output.state = ResourceState::Ready;
 
-    output.data.resize(tw * th * output.channels);
+    output.data = (uint8_t *) malloc(tw * th * output.channels);
     for (size_t y = 0; y < th; ++y) {
       for (size_t x = 0; x < tw; ++x) {
         bool isWhite = (x ^ y) & 0b1000000;

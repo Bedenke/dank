@@ -8,9 +8,12 @@
 #include "AppleOS.hpp"
 #include "Metal.hpp"
 #include "modules/input/InputEvent.hpp"
+#include "modules/os/Capture.hpp"
 #include "modules/os/OS.hpp"
 #include "os/apple/renderer/AppleRenderer.hpp"
+#include "os/apple/support/CaptureEngine.h"
 #include "os/apple/support/Events.h"
+#include "os/apple/support/CaptureEngine.h"
 #include <cstddef>
 #include <dlfcn.h>
 
@@ -18,6 +21,14 @@ using namespace dank;
 
 class AppleOS : public OS {
 public:
+  void getCaptureSharableContent(CaptureSharableContent &output) override {
+    [[CaptureEngine sharedInstance] updateSharableContent:&output];
+  }
+
+  void setCaptureConfig(CaptureConfig &config) override {
+    [[CaptureEngine sharedInstance] updateConfig:&config];
+  }
+
   void getDataFromURI(URI &uri, ResourceData &output) override {
     NSString *protocol = [NSString stringWithCString:uri.protocol.c_str()
                                             encoding:NSUTF8StringEncoding];

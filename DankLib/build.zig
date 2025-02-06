@@ -43,6 +43,7 @@ pub fn build(b: *std.Build) void {
             "modules/engine/Engine.cpp",
             "modules/scene/Scene.cpp",
             "modules/scene/Camera.cpp",
+            "modules/os/Thread.cpp",
             "modules/input/Input.cpp",
             "os/apple/AppleOS.cpp",
             "os/apple/renderer/AppleRenderer.cpp",
@@ -62,14 +63,18 @@ pub fn build(b: *std.Build) void {
     libApple.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
+            "os/apple/support/CaptureStreamOutput.mm",
+            "os/apple/support/CaptureEngine.mm",
             "os/apple/DankView.mm",
         },
         .flags = &objCFlags,
     });
     libApple.linkLibCpp();
     libApple.linkFramework("Foundation");
+    libApple.linkFramework("CoreFoundation");
     libApple.linkFramework("Metal");
     libApple.linkFramework("MetalKit");
+    libApple.linkFramework("ScreenCaptureKit");
 
     const HelperFunctions = struct {
         fn clearLibDir(_: *std.Build.Step, _: std.Progress.Node) anyerror!void {

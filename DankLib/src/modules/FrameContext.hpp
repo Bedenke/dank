@@ -3,7 +3,6 @@
 #include "modules/Foundation.hpp"
 #include "modules/renderer/meshes/Mesh.hpp"
 #include "modules/renderer/textures/Texture.hpp"
-#include "modules/input/Input.hpp"
 
 namespace dank {
 struct FrameContext {
@@ -15,6 +14,5 @@ struct FrameContext {
   entt::registry draw{};
   mesh::MeshLibrary meshLibrary{};
   texture::TextureLibrary textureLibrary{};
-  Input input{};
 };
 } // namespace dank

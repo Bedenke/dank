@@ -6,6 +6,7 @@
 #include "AppleOS.hpp"
 #include "modules/engine/Console.hpp"
 #include "modules/engine/Engine.hpp"
+#include "modules/input/Input.hpp"
 #include "modules/os/OS.hpp"
 #include "os/apple/renderer/AppleRenderer.hpp"
 
@@ -51,44 +52,44 @@ void apple::onResize(int width, int height) { viewResized = true; }
 void apple::onInputEvent(InputEvent &event) {
   switch (event.type) {
   case InputEventType::KeyDown:
-    engine->ctx.input.handleKeyDown(event.key);
+    dank::input.handleKeyDown(event.key);
     break;
   case InputEventType::KeyUp:
-    engine->ctx.input.handleKeyUp(event.key);
+    dank::input.handleKeyUp(event.key);
     break;
   case InputEventType::KeyTyped:
-    engine->ctx.input.handleKeyTyped(event.key, event.character);
+    dank::input.handleKeyTyped(event.key, event.character);
     break;
   case InputEventType::MouseDrag: {
     TouchData touchData{};
     touchData.x = (float)event.x;
     touchData.y = (float)event.y;
     touchData.button = event.button;
-    engine->ctx.input.handleTouchMove(touchData);
+    dank::input.handleTouchMove(touchData);
   } break;
   case InputEventType::MouseMove: {
     TouchData touchData{};
     touchData.x = (float)event.x;
     touchData.y = (float)event.y;
     touchData.button = event.button;
-    engine->ctx.input.handleTouchMove(touchData);
+    dank::input.handleTouchMove(touchData);
   } break;
   case InputEventType::MouseDown: {
     TouchData touchData{};
     touchData.x = (float)event.x;
     touchData.y = (float)event.y;
     touchData.button = event.button;
-    engine->ctx.input.handleTouchDown(touchData);
+    dank::input.handleTouchDown(touchData);
   } break;
   case InputEventType::MouseUp: {
     TouchData touchData{};
     touchData.x = (float)event.x;
     touchData.y = (float)event.y;
     touchData.button = event.button;
-    engine->ctx.input.handleTouchUp(touchData);
+    dank::input.handleTouchUp(touchData);
   } break;
   case InputEventType::MouseScroll: {
-    engine->ctx.input.handleWheel(event.wheelDelta);
+    dank::input.handleWheel(event.wheelDelta);
 
   } break;
   }

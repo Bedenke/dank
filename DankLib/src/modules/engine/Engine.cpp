@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 #include "Console.hpp"
+#include "modules/input/Input.hpp"
 #include "modules/renderer/meshes/RectangleMesh.hpp"
 #include "modules/renderer/meshes/TriangleMesh.hpp"
 #include "modules/renderer/textures/DebugTexture.hpp"
@@ -54,7 +55,7 @@ void Engine::update() {
   ctx.absoluteTime += deltaTime;
   ctx.absoluteFrame++;
 
-  ctx.input.update(deltaTime);
+  dank::input.update(deltaTime);
   
   scene->update(ctx);
 }
