@@ -171,6 +171,8 @@ pub fn buildWindows(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
     });
     libWindowsStatic.addIncludePath(b.path("src/"));
     libWindowsStatic.linkLibCpp();
+    libWindowsStatic.linkSystemLibrary("d3d12");
+    libWindowsStatic.linkSystemLibrary("dxgi");
 
     libWindowsStatic.addCSourceFiles(.{
         .root = b.path("src"),
@@ -183,7 +185,7 @@ pub fn buildWindows(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
             "os/windows/WindowsOS.cpp",
             "os/windows/DankView.cpp",
             "os/windows/support/Thread.cpp",
-            // "os/windows/renderer/WindowsRenderer.cpp",
+            "os/windows/renderer/DXRenderer.cpp",
         },
         .flags = &cflags,
     });

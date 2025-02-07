@@ -2,6 +2,7 @@
 #include "modules/engine/Engine.hpp"
 #include "modules/input/Input.hpp"
 #include "modules/input/InputEvent.hpp"
+#include "os/windows/renderer/DXRenderer.hpp"
 #include <stdexcept>
 #include <winuser.h>
 
@@ -10,6 +11,7 @@ using namespace dank;
 bool danking;
 
 dank::Engine engine{};
+dank::dx::DXRenderer renderer{};
 
 LRESULT CALLBACK WindowsSurfaceWndProc(HWND hwnd, UINT msg, WPARAM wParam,
                                        LPARAM lParam) {
@@ -31,6 +33,7 @@ LRESULT CALLBACK WindowsSurfaceWndProc(HWND hwnd, UINT msg, WPARAM wParam,
       int width = rect.right - rect.left;
       int height = rect.bottom - rect.top;
       engine.onViewResize(width, height);
+      // TODO: restart renderer
     }
   } break;
   case WM_KEYDOWN: {
@@ -145,16 +148,18 @@ DankView::DankView(HINSTANCE hInstance) {
   if (!RegisterClassEx(&wc))
     throw std::runtime_error("Failed to register window");
 
-  hWnd = CreateWindowEx(0, className, title, WS_OVERLAPPEDWINDOW, 0, 0, 640,
-                        400, NULL, NULL, hInstance, NULL);
+  hWnd = CreateWindowEx(0, className, title, WS_OVERLAPPEDWINDOW, 0, 0, 800,
+                        600, NULL, NULL, hInstance, NULL);
 }
 
 void DankView::start() {
   danking = true;
   show();
+  renderer.init(hWnd, 800, 600);
   while (danking) {
     render();
   }
+  renderer.release();
 }
 
 void DankView::show() {
@@ -168,4 +173,6 @@ void DankView::render() {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
+  engine.update();
+  renderer.render(engine.ctx, engine.scene);
 }
