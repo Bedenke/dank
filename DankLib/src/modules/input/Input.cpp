@@ -184,7 +184,7 @@ void Input::handleKeyUp(const InputKey &key) {
 }
 
 void Input::handleKeyTyped(const InputKey &key, wchar_t c) {
-  if (keyInputListener != nullptr && !std::iscntrl(c))
+  if (keyInputListener != nullptr)
     keyInputListener->onChar(c);
 }
 
@@ -198,4 +198,49 @@ void Input::getTouchState(TouchState &touchState, int pointer) {
   touchState.vy = touch.velY;
   touchState.actions = touch.actions;
   touchState.button = touch.button;
+}
+
+void Input::handleInputEvent(const InputEvent &event) {
+  switch (event.type) {
+  case InputEventType::KeyDown:
+    handleKeyDown(event.key);
+    break;
+  case InputEventType::KeyUp:
+    handleKeyUp(event.key);
+    break;
+  case InputEventType::KeyTyped:
+    handleKeyTyped(event.key, event.character);
+    break;
+  case InputEventType::MouseDrag: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    handleTouchMove(touchData);
+  } break;
+  case InputEventType::MouseMove: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    handleTouchMove(touchData);
+  } break;
+  case InputEventType::MouseDown: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    handleTouchDown(touchData);
+  } break;
+  case InputEventType::MouseUp: {
+    TouchData touchData{};
+    touchData.x = (float)event.x;
+    touchData.y = (float)event.y;
+    touchData.button = event.button;
+    handleTouchUp(touchData);
+  } break;
+  case InputEventType::MouseScroll: {
+    handleWheel(event.wheelDelta);
+  } break;
+  }
 }

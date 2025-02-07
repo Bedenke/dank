@@ -5,7 +5,6 @@ const zcc = @import("compile_commands");
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) void {
-    var targets = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -17,6 +16,12 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    buildWindows(b, target, optimize);
+}
+
+pub fn buildApple(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    var targets = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
+
     const time_in_sec = std.time.timestamp();
     const fmt = "{s}_{}";
     var buf: [100]u8 = undefined;
@@ -24,19 +29,19 @@ pub fn build(b: *std.Build) void {
 
     const cflags = [_][]const u8{ "-std=c++17", "-fno-sanitize=undefined" };
 
-    const lib = b.addSharedLibrary(.{
+    const libAppleDynamic = b.addSharedLibrary(.{
         .name = name,
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    lib.addIncludePath(b.path("src/"));
-    lib.installHeader(b.path("src/os/apple/DankView.h"), "DankView.h");
-    lib.linkLibCpp();
-    lib.linkFramework("Foundation");
-    lib.linkFramework("Metal");
+    libAppleDynamic.addIncludePath(b.path("src/"));
+    libAppleDynamic.installHeader(b.path("src/os/apple/DankView.h"), "DankView.h");
+    libAppleDynamic.linkLibCpp();
+    libAppleDynamic.linkFramework("Foundation");
+    libAppleDynamic.linkFramework("Metal");
 
-    lib.addCSourceFiles(.{
+    libAppleDynamic.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
             "modules/engine/Console.cpp",
@@ -53,14 +58,14 @@ pub fn build(b: *std.Build) void {
 
     const objCFlags = [_][]const u8{ "-std=c++17", "-fno-sanitize=undefined", "-fobjc-arc" };
 
-    const libApple = b.addStaticLibrary(.{
+    const libAppleStatic = b.addStaticLibrary(.{
         .name = "DankApple",
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    libApple.addIncludePath(b.path("src/"));
-    libApple.addCSourceFiles(.{
+    libAppleStatic.addIncludePath(b.path("src/"));
+    libAppleStatic.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
             "os/apple/support/CaptureStreamOutput.mm",
@@ -69,12 +74,12 @@ pub fn build(b: *std.Build) void {
         },
         .flags = &objCFlags,
     });
-    libApple.linkLibCpp();
-    libApple.linkFramework("Foundation");
-    libApple.linkFramework("CoreFoundation");
-    libApple.linkFramework("Metal");
-    libApple.linkFramework("MetalKit");
-    libApple.linkFramework("ScreenCaptureKit");
+    libAppleStatic.linkLibCpp();
+    libAppleStatic.linkFramework("Foundation");
+    libAppleStatic.linkFramework("CoreFoundation");
+    libAppleStatic.linkFramework("Metal");
+    libAppleStatic.linkFramework("MetalKit");
+    libAppleStatic.linkFramework("ScreenCaptureKit");
 
     const HelperFunctions = struct {
         fn clearLibDir(_: *std.Build.Step, _: std.Progress.Node) anyerror!void {
@@ -138,7 +143,7 @@ pub fn build(b: *std.Build) void {
     compile_shader.step.dependOn(&clean_lib_step);
     pack_shaders.step.dependOn(&compile_shader.step);
 
-    targets.append(lib) catch |err| {
+    targets.append(libAppleDynamic) catch |err| {
         std.debug.print("Failed {s}", .{@errorName(err)});
     };
 
@@ -147,8 +152,66 @@ pub fn build(b: *std.Build) void {
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
-    b.installArtifact(lib);
-    b.installArtifact(libApple);
+    b.installArtifact(libAppleDynamic);
+    b.installArtifact(libAppleStatic);
+
+    zcc.createStep(b, "cdb", targets.toOwnedSlice() catch @panic("OOM"));
+}
+
+pub fn buildWindows(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    var targets = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
+
+    const cflags = [_][]const u8{ "-std=c++17", "-fno-sanitize=undefined" };
+
+    const libWindowsStatic = b.addStaticLibrary(.{
+        .name = "DankWindows",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    libWindowsStatic.addIncludePath(b.path("src/"));
+    libWindowsStatic.linkLibCpp();
+
+    libWindowsStatic.addCSourceFiles(.{
+        .root = b.path("src"),
+        .files = &.{
+            "modules/engine/Console.cpp",
+            "modules/engine/Engine.cpp",
+            "modules/scene/Scene.cpp",
+            "modules/scene/Camera.cpp",
+            "modules/input/Input.cpp",
+            "os/windows/WindowsOS.cpp",
+            "os/windows/DankView.cpp",
+            "os/windows/support/Thread.cpp",
+            // "os/windows/renderer/WindowsRenderer.cpp",
+        },
+        .flags = &cflags,
+    });
+
+    const exe = b.addExecutable(.{
+        .name = "DankApp",
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.addCSourceFile(.{
+        .file = b.path("src/os/windows/main.cpp"),
+        .flags = &cflags,
+    });
+    exe.addIncludePath(b.path("src/"));
+    exe.linkLibrary(libWindowsStatic);
+    exe.linkLibC();
+    exe.linkLibCpp();
+
+    targets.append(libWindowsStatic) catch |err| {
+        std.debug.print("Failed {s}", .{@errorName(err)});
+    };
+
+    targets.append(exe) catch |err| {
+        std.debug.print("Failed {s}", .{@errorName(err)});
+    };
+
+    b.installArtifact(libWindowsStatic);
+    b.installArtifact(exe);
 
     zcc.createStep(b, "cdb", targets.toOwnedSlice() catch @panic("OOM"));
 }

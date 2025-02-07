@@ -50,47 +50,5 @@ void apple::onDraw(MetalView *view) {
 void apple::onResize(int width, int height) { viewResized = true; }
 
 void apple::onInputEvent(InputEvent &event) {
-  switch (event.type) {
-  case InputEventType::KeyDown:
-    dank::input.handleKeyDown(event.key);
-    break;
-  case InputEventType::KeyUp:
-    dank::input.handleKeyUp(event.key);
-    break;
-  case InputEventType::KeyTyped:
-    dank::input.handleKeyTyped(event.key, event.character);
-    break;
-  case InputEventType::MouseDrag: {
-    TouchData touchData{};
-    touchData.x = (float)event.x;
-    touchData.y = (float)event.y;
-    touchData.button = event.button;
-    dank::input.handleTouchMove(touchData);
-  } break;
-  case InputEventType::MouseMove: {
-    TouchData touchData{};
-    touchData.x = (float)event.x;
-    touchData.y = (float)event.y;
-    touchData.button = event.button;
-    dank::input.handleTouchMove(touchData);
-  } break;
-  case InputEventType::MouseDown: {
-    TouchData touchData{};
-    touchData.x = (float)event.x;
-    touchData.y = (float)event.y;
-    touchData.button = event.button;
-    dank::input.handleTouchDown(touchData);
-  } break;
-  case InputEventType::MouseUp: {
-    TouchData touchData{};
-    touchData.x = (float)event.x;
-    touchData.y = (float)event.y;
-    touchData.button = event.button;
-    dank::input.handleTouchUp(touchData);
-  } break;
-  case InputEventType::MouseScroll: {
-    dank::input.handleWheel(event.wheelDelta);
-
-  } break;
-  }
+  dank::input.handleInputEvent(event);
 }

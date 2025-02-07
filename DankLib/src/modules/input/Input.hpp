@@ -111,6 +111,7 @@ public:
   InputOptions options{};
   KeyInputListener *keyInputListener = nullptr;
   void update(const float dt);
+  void handleInputEvent(const InputEvent &event);
   void handleTouchMove(const TouchData &data);
   void handleTouchDown(const TouchData &data);
   void handleTouchUp(const TouchData &data);
