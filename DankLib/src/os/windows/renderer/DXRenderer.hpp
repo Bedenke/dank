@@ -1,10 +1,11 @@
 #pragma once
 
+// #include "DXFoundation.hpp"
 #include "DXFoundation.hpp"
 #include "modules/FrameContext.hpp"
 #include "modules/renderer/Renderer.hpp"
 #include "modules/scene/Scene.hpp"
-#include "os/windows/WindowsFoundation.hpp"
+
 
 namespace dank {
 namespace dx {
@@ -21,8 +22,13 @@ private:
   ComPtr<ID3D12Device> device;
   ComPtr<ID3D12CommandQueue> commandQueue;
   ComPtr<IDXGISwapChain1> swapChain;
-  ComPtr<ID3D12PipelineState> renderPipelineState;
   ComPtr<ID3D12RootSignature> rootSignature;
+
+  ComPtr<ID3DBlob> vertexShader;
+  ComPtr<ID3DBlob> pixelShader;
+  D3D12_SHADER_BYTECODE vertexShaderBytecode = {};
+  D3D12_SHADER_BYTECODE pixelShaderBytecode = {};
+  ComPtr<ID3D12PipelineState> renderPipelineState;
 
   int currentBackBuffer = 0;
   UINT renderTargetViewDescriptorSize;
@@ -38,7 +44,35 @@ private:
 
   ComPtr<ID3D12DescriptorHeap> renderTargetDescriptorHeap;
 
+  HWND outputWindow;
+  int width;
+  int height;
+
+  void initViewport();
+  void initDevice();
+  void initCommandQueue();
+  void initCommandLists();
+  void initSwapChain();
+  void initFences();
+  void initRenderTargets();
+  void initRootSignature();
+  void initShaderLibrary();
+  void initGraphicsPipeline();
+  void initUploadCommandList();
+  void initBuffers(ComPtr<ID3D12GraphicsCommandList> uploadCommandList);
+
+  void renderCommandList(ComPtr<ID3D12GraphicsCommandList> commandList);
   void renderFrame(FrameContext &ctx, Scene *scene);
+
+  ComPtr<ID3D12Resource> uploadBuffer_;
+
+  ComPtr<ID3D12Resource> vertexBuffer_;
+  D3D12_VERTEX_BUFFER_VIEW vertexBufferView_;
+
+  ComPtr<ID3D12Resource> indexBuffer_;
+  D3D12_INDEX_BUFFER_VIEW indexBufferView_;
+
+  ComPtr<ID3D12Debug> debugController;
 
 public:
   void init(HWND outputWindow, int width, int height);
@@ -48,7 +82,7 @@ public:
 
 namespace GraphicsPipeline {
 const D3D12_DEPTH_STENCIL_DESC DepthStencilDesc = {
-    TRUE,                       // DepthEnable
+    FALSE,                      // DepthEnable
     D3D12_DEPTH_WRITE_MASK_ALL, // DepthWriteMask
     D3D12_COMPARISON_FUNC_LESS, // DepthFunc
     FALSE,                      // StencilEnable
@@ -85,7 +119,7 @@ const D3D12_RASTERIZER_DESC RasterizerDesc = {
 };
 
 const D3D12_RENDER_TARGET_BLEND_DESC RenderTargetBlendDesc = {
-    FALSE,                        // BlendEnable
+    TRUE,                         // BlendEnable
     FALSE,                        // LogicOpEnable
     D3D12_BLEND_ONE,              // SrcBlend
     D3D12_BLEND_ZERO,             // DestBlend

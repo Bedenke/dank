@@ -9,8 +9,13 @@ pub fn build(b: *std.Build) void {
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{});
-
+    const target = blk: {
+        var tgt = b.standardTargetOptions(.{});
+        if (tgt.result.os.tag == .windows) {
+            tgt.result.abi = .msvc; // Force MSVC ABI only on Windows
+        }
+        break :blk tgt;
+    };
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
@@ -163,27 +168,40 @@ pub fn buildWindows(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
 
     const cflags = [_][]const u8{ "-std=c++17", "-fno-sanitize=undefined" };
 
-    const libWindowsStatic = b.addStaticLibrary(.{
+    const lib = b.addStaticLibrary(.{
         .name = "DankWindows",
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
     });
-    libWindowsStatic.addIncludePath(b.path("src/"));
-    libWindowsStatic.linkLibCpp();
-    libWindowsStatic.linkSystemLibrary("d3d12");
-    libWindowsStatic.linkSystemLibrary("dxgi");
 
-    libWindowsStatic.addCSourceFiles(.{
+    lib.addSystemIncludePath(.{ .cwd_relative = "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.26100.0\\winrt" });
+    lib.addIncludePath(b.path("vendor/DirectX-Headers-1.615.0/include/directx/"));
+    lib.addIncludePath(b.path("src/"));
+    lib.linkSystemLibrary("dxgi");
+    lib.linkSystemLibrary("d3d12");
+    lib.linkSystemLibrary("d3dcompiler");
+    lib.linkSystemLibrary("shlwapi");
+    lib.linkSystemLibrary("user32");
+    lib.linkLibC();
+    // if (b.lazyDependency("directx_headers", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    // })) |dep| {
+    //     lib.addIncludePath(b.path("vendor/DirectX-Headers-1.615.0/include/directx/"));
+    //     lib.linkLibrary(dep.artifact("directx-headers"));
+    // }
+
+    lib.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
-            "modules/engine/Console.cpp",
             "modules/engine/Engine.cpp",
+            "modules/engine/Console.cpp",
             "modules/scene/Scene.cpp",
             "modules/scene/Camera.cpp",
             "modules/input/Input.cpp",
             "os/windows/WindowsOS.cpp",
             "os/windows/DankView.cpp",
+            // "os/windows/support/WindowsConsole.cpp",
             "os/windows/support/Thread.cpp",
             "os/windows/renderer/DXRenderer.cpp",
         },
@@ -199,12 +217,21 @@ pub fn buildWindows(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
         .file = b.path("src/os/windows/main.cpp"),
         .flags = &cflags,
     });
-    exe.addIncludePath(b.path("src/"));
-    exe.linkLibrary(libWindowsStatic);
-    exe.linkLibC();
-    exe.linkLibCpp();
 
-    targets.append(libWindowsStatic) catch |err| {
+    //exe.addSystemIncludePath(.{ .cwd_relative = "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.26100.0\\winrt" });
+    //exe.addSystemIncludePath(.{ .cwd_relative = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.42.34433\\Lib\x64" });
+    //exe.addIncludePath(b.path("vendor/DirectX-Headers-1.615.0/include/directx/"));
+    exe.addIncludePath(b.path("src/"));
+    exe.linkLibC();
+    //exe.linkLibCpp();
+    exe.linkSystemLibrary("dxgi");
+    exe.linkSystemLibrary("d3d12");
+    exe.linkSystemLibrary("d3dcompiler");
+    exe.linkSystemLibrary("shlwapi");
+    lib.linkSystemLibrary("user32");
+    exe.linkLibrary(lib);
+
+    targets.append(lib) catch |err| {
         std.debug.print("Failed {s}", .{@errorName(err)});
     };
 
@@ -212,8 +239,26 @@ pub fn buildWindows(b: *std.Build, target: std.Build.ResolvedTarget, optimize: s
         std.debug.print("Failed {s}", .{@errorName(err)});
     };
 
-    b.installArtifact(libWindowsStatic);
+    b.installArtifact(lib);
     b.installArtifact(exe);
 
-    zcc.createStep(b, "cdb", targets.toOwnedSlice() catch @panic("OOM"));
+    const vs_output_file = b.pathJoin(&.{ ".", "zig-out", "bin", "VS_main.cso" });
+    const ps_output_file = b.pathJoin(&.{ ".", "zig-out", "bin", "PS_main.cso" });
+
+    const compile_vs_shader = b.addSystemCommand(&.{"dxc"});
+    compile_vs_shader.addArgs(&.{ "-T", "vs_5_0", "-E", "VSMain", "-Fo" });
+    compile_vs_shader.addArg(vs_output_file);
+    compile_vs_shader.addFileArg(b.path("src/os/windows/renderer/shader.hlsl"));
+    compile_vs_shader.expectExitCode(0);
+
+    const compile_ps_shader = b.addSystemCommand(&.{"dxc"});
+    compile_ps_shader.addArgs(&.{ "-T", "ps_5_0", "-E", "PSMain", "-Fo" });
+    compile_ps_shader.addArg(ps_output_file);
+    compile_ps_shader.addFileArg(b.path("src/os/windows/renderer/shader.hlsl"));
+    compile_ps_shader.expectExitCode(0);
+
+    b.getInstallStep().dependOn(&compile_vs_shader.step);
+    b.getInstallStep().dependOn(&compile_ps_shader.step);
+
+    //zcc.createStep(b, "cdb", targets.toOwnedSlice() catch @panic("OOM"));
 }

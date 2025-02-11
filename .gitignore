@@ -1,3 +1,6 @@
 .DS_Store
+.vscode
 DankLib/.cache
 DankLib/compile_commands.json
+DankLib/vendor
+DankLib/dxil.dll

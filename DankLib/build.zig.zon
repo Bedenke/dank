@@ -27,6 +27,11 @@
             .url = "https://github.com/the-argus/zig-compile-commands/archive/b73e8bdeb1266ea01b249387cabb39aad49f35d1.tar.gz",
             .hash = "1220b92b277b33762a10b4f239edddfbe9aadd53af88c678f94443b0d2312d9526fa",
         },
+        .directx_headers = .{
+            .url = "https://pkg.machengine.org/directx-headers/eae9b3b8a84a32ae9e67025fd64e8d8b7755e628.tar.gz",
+            .hash = "1220334a0e3480fef60443cef8b519d08b4dbf16ba37d98a7b77647fa4b7761b6048",
+            .lazy = true,
+        },
         // See `zig fetch --save <url>` for a command-line interface for adding dependencies.
         //.example = .{
         //    // When updating this field to a new URL, be sure to delete the corresponding

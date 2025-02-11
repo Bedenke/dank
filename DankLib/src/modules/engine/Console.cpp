@@ -1,7 +1,7 @@
 #include "Console.hpp"
-#include <string>
 #include <iostream>
 #include <stdarg.h>
+#include <string>
 
 using namespace std;
 
@@ -14,28 +14,29 @@ using namespace std;
 #define KCYN "\x1B[36m"
 #define KWHT "\x1B[37m"
 
-void dank::console::log(const char *format, ...)
-{
-    std::string msg = "[log] ";
-    msg.append(format);
-    msg.append("\n");
+void dank::console::init() {}
+void dank::console::release() {}
 
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, msg.c_str(), argptr);
-    fflush(stdout);
-    va_end(argptr);
+void dank::console::log(const char *format, ...) {
+  std::string msg = "[log] ";
+  msg.append(format);
+  msg.append("\n");
+
+  va_list argptr;
+  va_start(argptr, format);
+  vfprintf(stdout, msg.c_str(), argptr);
+  fflush(stdout);
+  va_end(argptr);
 }
 
-void dank::console::warn(const char *format, ...)
-{
-    std::string msg = "\x1B[33m[warn] ";
-    msg.append(format);
-    msg.append("\n\x1B[0m");
+void dank::console::warn(const char *format, ...) {
+  std::string msg = "\x1B[33m[warn] ";
+  msg.append(format);
+  msg.append("\n\x1B[0m");
 
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stdout, msg.c_str(), argptr);
-    fflush(stdout);
-    va_end(argptr);
+  va_list argptr;
+  va_start(argptr, format);
+  vfprintf(stdout, msg.c_str(), argptr);
+  fflush(stdout);
+  va_end(argptr);
 }

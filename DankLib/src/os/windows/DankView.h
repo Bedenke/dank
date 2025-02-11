@@ -1,6 +1,6 @@
 #pragma once
 
-#include "WindowsFoundation.hpp"
+#include "WindowsFoundation.h"
 
 namespace dank {
 class DankView {
